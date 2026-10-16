@@ -31,6 +31,8 @@ export default function Employees({ user }) {
   const [query, setQuery] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -83,6 +85,14 @@ export default function Employees({ user }) {
     return matchesText && matchesDepartment && matchesStatus
   }), [items, query, departmentFilter, statusFilter, departmentMap, positionMap])
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize))
+  const pageStart = (page - 1) * pageSize
+  const pageItems = filteredItems.slice(pageStart, pageStart + pageSize)
+  const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+
+  useEffect(() => { setPage(1) }, [query, departmentFilter, statusFilter, pageSize])
+  useEffect(() => { if (page > totalPages) setPage(totalPages) }, [page, totalPages])
+
   const activeCount = items.filter(x => x.status === 'ACTIVE').length
   const leaveCount = items.filter(x => x.status === 'ON_LEAVE').length
   const inactiveCount = items.filter(x => x.status === 'INACTIVE').length
@@ -105,8 +115,16 @@ export default function Employees({ user }) {
 
     <div className="panel data-panel management-list-panel">
       <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm theo họ tên, mã, email, SĐT..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="ALL">Tất cả phòng ban</option>{departments.map(x => <option key={x.id} value={String(x.id)}>{x.name}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang làm</option><option value="ON_LEAVE">Tạm nghỉ</option><option value="INACTIVE">Đã nghỉ việc</option></select></div>
-      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{x.employee_code} · {x.email}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : x.status === 'ON_LEAVE' ? 'badge badge-wait' : 'badge'}>{x.status === 'ACTIVE' ? 'Đang làm' : x.status === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Đã nghỉ việc'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}</div></td>}</tr>)}</tbody></table></div>
-      <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} nhân viên</div>
+      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Mã NV</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{pageItems.map((x,index) => <tr key={x.id}><td>{pageStart + index + 1}</td><td><b>{x.employee_code}</b></td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{x.email}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : x.status === 'ON_LEAVE' ? 'badge badge-wait' : 'badge'}>{x.status === 'ACTIVE' ? 'Đang làm' : x.status === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Đã nghỉ việc'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}</div></td>}</tr>)}</tbody></table></div>
+      <div className="table-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div className="actions" style={{ alignItems: 'center' }}><span>Số dòng:</span><select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ padding: '7px 10px' }}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option></select></div>
+        <span>{filteredItems.length ? `Hiển thị ${pageStart + 1}-${Math.min(pageStart + pageSize, filteredItems.length)} / ${filteredItems.length} nhân viên` : 'Không có nhân viên phù hợp'}</span>
+        <div className="actions" style={{ alignItems: 'center' }}>
+          <button type="button" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>‹</button>
+          {pageNumbers.map(number => <button type="button" key={number} className={number === page ? 'primary' : ''} onClick={() => setPage(number)}>{number}</button>)}
+          <button type="button" disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>›</button>
+        </div>
+      </div>
     </div>
 
     {showForm && editable && <div className="modal-backdrop"><form className="modal-card employee-modal employee-compact-modal" onSubmit={save}>
