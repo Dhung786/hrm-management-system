@@ -6,9 +6,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hr_management}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe_Db_123!}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - hrms_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +16,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  pgadmin:
+    image: dpage/pgadmin4:8.13
+    container_name: hrms-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@hrm.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-ChangeMe_PgAdmin_123!}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
 
   backend:
     build: ./backend
@@ -25,24 +42,33 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+    expose:
+      - "8000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
     container_name: hrms-frontend
     restart: unless-stopped
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     depends_on:
       - backend
+    expose:
+      - "8080"
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.27-alpine
+    container_name: hrms-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
     ports:
-      - "5173:5173"
+      - "8080:8080"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   hrms_pgdata:
+  pgadmin_data:
