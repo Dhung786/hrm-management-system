@@ -18,6 +18,12 @@ const ROLE_ACTIONS = {
   ADMIN: [
     ['employees', 'Nhân viên', 'Quản lý hồ sơ và trạng thái làm việc', Users],
     ['organization', 'Phòng ban & chức vụ', 'Quản lý cơ cấu tổ chức', Building2],
+    ['attendance', 'Chấm công', 'Theo dõi dữ liệu chấm công toàn hệ thống', Clock3],
+    ['leaves', 'Nghỉ phép', 'Theo dõi và xử lý đơn nghỉ', CalendarDays],
+    ['payroll', 'Tiền lương', 'Theo dõi bảng lương và trạng thái chi trả', WalletCards],
+    ['contracts', 'Hợp đồng', 'Theo dõi và quản lý hợp đồng lao động', FileText],
+    ['reviews', 'Đánh giá hiệu suất', 'Theo dõi kết quả đánh giá nhân viên', Star],
+    ['recruitment', 'Tuyển dụng', 'Theo dõi tin tuyển dụng và ứng viên', BriefcaseBusiness],
     ['accounts', 'Tài khoản & phân quyền', 'Tạo tài khoản, gán vai trò và khóa đăng nhập', ShieldCheck],
     ['system', 'Giám sát hệ thống', 'Theo dõi tình trạng dịch vụ và hạ tầng', Gauge],
     ['profile', 'Hồ sơ của tôi', 'Thông tin tài khoản quản trị', UserRound],
