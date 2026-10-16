@@ -58,6 +58,8 @@ export default function Organization({ user }) {
   const filteredPositions = useMemo(() => positions.filter(x => !keyword || `${x.name} ${x.level || ''}`.toLowerCase().includes(keyword)), [positions, keyword])
   const describedDepartments = departments.filter(x => x.description).length
   const leveledPositions = positions.filter(x => x.level).length
+  const missingInfo = departments.filter(x => !x.description).length + positions.filter(x => !x.level).length
+  const completedInfo = describedDepartments + leveledPositions
 
   return <section>
     <div className="page-title page-title-modern">
@@ -68,8 +70,8 @@ export default function Organization({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><Building2 size={20}/></div><div><span>Phòng ban</span><strong>{departments.length}</strong><small>Tổng số phòng ban</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><UsersRound size={20}/></div><div><span>Chức vụ</span><strong>{positions.length}</strong><small>Vị trí công việc</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><ShieldCheck size={20}/></div><div><span>Có mô tả</span><strong>{describedDepartments}</strong><small>Phòng ban đã hoàn thiện mô tả</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><ShieldCheck size={20}/></div><div><span>Có cấp bậc</span><strong>{leveledPositions}</strong><small>Chức vụ đã gán cấp bậc</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><ShieldCheck size={20}/></div><div><span>Thiếu thông tin</span><strong>{missingInfo}</strong><small>{missingInfo ? 'Phòng ban/chức vụ cần hoàn thiện' : 'Thông tin cơ cấu đã đầy đủ'}</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><ShieldCheck size={20}/></div><div><span>Đã hoàn thiện</span><strong>{completedInfo}</strong><small>Mô tả phòng ban và cấp bậc chức vụ</small></div></div>
     </div>
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
