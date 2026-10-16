@@ -73,8 +73,36 @@ export default function Recruitment({ user }) {
     if (!/^\S+@\S+\.\S+$/.test(candidateForm.email)) return setError('Email ứng viên không hợp lệ')
     if (candidateForm.phone && !/^\d{9,10}$/.test(candidateForm.phone)) return setError('Số điện thoại chỉ được gồm 9-10 chữ số và không được quá 10 số')
     try {
-      await request('/api/talent/candidates', { method: 'POST', body: JSON.stringify({ ...candidateForm, phone: candidateForm.phone || null, job_posting_id: candidateForm.job_posting_id ? Number(candidateForm.job_posting_id) : null, note: candidateForm.note || null }) })
-      setCandidateForm(candidateBlank); setShowCandidate(false); setMessage('Đã thêm ứng viên'); await load()
+      await request('/api/talent/candidates', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...candidateForm,
+          stage: 'APPLIED',
+          phone: candidateForm.phone || null,
+          job_posting_id: candidateForm.job_posting_id ? Number(candidateForm.job_posting_id) : null,
+          note: candidateForm.note || null,
+        }),
+      })
+      setCandidateForm(candidateBlank); setShowCandidate(false); setMessage('Đã thêm ứng viên ở giai đoạn Đã ứng tuyển'); await load()
+    } catch (e) { setError(e.message) }
+  }
+
+  const updateCandidateStage = async (candidate, stage) => {
+    setError(''); setMessage('')
+    try {
+      await request(`/api/talent/candidates/${candidate.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          full_name: candidate.full_name,
+          email: candidate.email,
+          phone: candidate.phone || null,
+          job_posting_id: candidate.job_posting_id || null,
+          stage,
+          note: candidate.note || null,
+        }),
+      })
+      setMessage(`Đã chuyển ứng viên sang giai đoạn ${stageLabel[stage]}`)
+      await load()
     } catch (e) { setError(e.message) }
   }
 
@@ -115,7 +143,7 @@ export default function Recruitment({ user }) {
 
     <div className="org-grid management-grid">
       <div className="panel data-panel"><div className="panel-heading"><div><span>VỊ TRÍ TUYỂN</span><h2>Danh sách tin tuyển dụng</h2></div><small>{filteredJobs.length} / {jobs.length} vị trí</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Vị trí</th><th>Phòng ban</th><th>Số lượng</th><th>Trạng thái</th></tr></thead><tbody>{filteredJobs.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.title}</b><br/><small>{x.description || 'Chưa có mô tả'}</small></td><td>{x.department || '-'}</td><td>{x.openings}</td><td><select value={x.status} onChange={e => updateJobStatus(x, e.target.value)}><option value="OPEN">Đang tuyển</option><option value="PAUSED">Tạm dừng</option><option value="CLOSED">Đã đóng</option></select></td></tr>)}</tbody></table></div></div>
-      <div className="panel data-panel"><div className="panel-heading"><div><span>ỨNG VIÊN</span><h2>Danh sách ứng viên</h2></div><small>{filteredCandidates.length} / {candidates.length} ứng viên</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Họ tên</th><th>Liên hệ</th><th>Vị trí</th><th>Giai đoạn</th></tr></thead><tbody>{filteredCandidates.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.full_name}</b></td><td>{x.email}<br/><small>{x.phone || '-'}</small></td><td>{jobMap[x.job_posting_id] || '-'}</td><td><span className={x.stage === 'HIRED' ? 'badge' : x.stage === 'REJECTED' ? 'badge badge-off' : 'role-chip'}>{stageLabel[x.stage] || x.stage}</span></td></tr>)}</tbody></table></div></div>
+      <div className="panel data-panel"><div className="panel-heading"><div><span>ỨNG VIÊN</span><h2>Danh sách ứng viên</h2></div><small>{filteredCandidates.length} / {candidates.length} ứng viên</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Họ tên</th><th>Liên hệ</th><th>Vị trí</th><th>Giai đoạn</th></tr></thead><tbody>{filteredCandidates.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.full_name}</b></td><td>{x.email}<br/><small>{x.phone || '-'}</small></td><td>{jobMap[x.job_posting_id] || '-'}</td><td><select value={x.stage} onChange={e => updateCandidateStage(x, e.target.value)}>{Object.entries(stageLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></td></tr>)}</tbody></table></div></div>
     </div>
 
     {showJob && <div className="modal-backdrop"><form className="modal-card employee-compact-modal" onSubmit={createJob}>
@@ -133,8 +161,8 @@ export default function Recruitment({ user }) {
       <div className="employee-form-table">
         <div className="employee-form-row"><label className="employee-form-cell"><span>Họ tên</span><input maxLength={160} value={candidateForm.full_name} onChange={e => setCandidateForm({ ...candidateForm, full_name: e.target.value })} required /></label><label className="employee-form-cell"><span>Email</span><input type="email" maxLength={160} value={candidateForm.email} onChange={e => setCandidateForm({ ...candidateForm, email: e.target.value })} required /></label></div>
         <div className="employee-form-row"><label className="employee-form-cell"><span>Điện thoại</span><input inputMode="numeric" maxLength={10} value={candidateForm.phone} onChange={e => setCandidateForm({ ...candidateForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} placeholder="9-10 chữ số" /></label><label className="employee-form-cell"><span>Vị trí</span><select value={candidateForm.job_posting_id} onChange={e => setCandidateForm({ ...candidateForm, job_posting_id: e.target.value })}><option value="">-- Chưa gán --</option>{jobs.map(x => <option key={x.id} value={x.id}>{x.title}</option>)}</select></label></div>
-        <div className="employee-form-row"><label className="employee-form-cell"><span>Giai đoạn</span><select value={candidateForm.stage} onChange={e => setCandidateForm({ ...candidateForm, stage: e.target.value })}>{Object.entries(stageLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><div className="employee-form-summary"><span>Số điện thoại chỉ nhận 9-10 chữ số và thông tin liên hệ phải hợp lệ.</span></div></div>
-        <div className="employee-form-row employee-form-row-wide"><label className="employee-form-cell employee-form-cell-wide"><span>Ghi chú</span><textarea maxLength={2000} value={candidateForm.note} onChange={e => setCandidateForm({ ...candidateForm, note: e.target.value })} placeholder="Ghi chú phỏng vấn hoặc thông tin bổ sung" /></label></div>
+        <div className="employee-form-row employee-form-row-wide"><label className="employee-form-cell employee-form-cell-wide"><span>Ghi chú</span><textarea maxLength={2000} value={candidateForm.note} onChange={e => setCandidateForm({ ...candidateForm, note: e.target.value })} placeholder="Ghi chú hoặc thông tin bổ sung" /></label></div>
+        <div className="employee-form-row employee-form-row-last"><div className="employee-form-summary"><span>Ứng viên mới mặc định ở giai đoạn Đã ứng tuyển. Giai đoạn tuyển dụng được cập nhật trực tiếp tại danh sách ứng viên.</span></div></div>
       </div>
       <div className="actions employee-form-actions"><button type="button" onClick={() => setShowCandidate(false)}>Hủy</button><button className="primary">Thêm ứng viên</button></div>
     </form></div>}
