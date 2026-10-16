@@ -109,7 +109,40 @@ export default function Employees({ user }) {
       <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} nhân viên</div>
     </div>
 
-    {showForm && editable && <div className="modal-backdrop"><form className="modal-card employee-modal" onSubmit={save}><div className="modal-head"><div><span>NHÂN VIÊN</span><h2>{editingId ? 'Cập nhật hồ sơ' : 'Thêm nhân viên mới'}</h2></div><button type="button" onClick={() => setShowForm(false)}>✕</button></div><div className="form-grid two-col-form">
-      <label>Mã NV<input maxLength={30} value={form.employee_code} onChange={e => setForm({ ...form, employee_code: e.target.value.toUpperCase() })} required /></label><label>Họ tên<input maxLength={160} value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required /></label><label>Email<input type="email" maxLength={160} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label><label>Điện thoại<input inputMode="numeric" maxLength={10} placeholder="9-10 chữ số" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} /></label><label>Ngày sinh<input type="date" value={form.date_of_birth} max={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} /></label><label>Giới tính<select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}><option value="">-- Chọn --</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option></select></label><label>Ngày vào làm<input type="date" value={form.hire_date} onChange={e => setForm({ ...form, hire_date: e.target.value })} required /></label><label>Phòng ban<select value={form.department_id} onChange={e => setForm({ ...form, department_id: e.target.value })}><option value="">-- Chưa gán --</option>{departments.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Chức vụ<select value={form.position_id} onChange={e => setForm({ ...form, position_id: e.target.value })}><option value="">-- Chưa gán --</option>{positions.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Lương cơ bản<input type="number" min="0" step="1000" value={form.base_salary} onChange={e => setForm({ ...form, base_salary: e.target.value })} /></label><label className="span-2">Địa chỉ<textarea maxLength={1000} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></label><label>Trạng thái<select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="ACTIVE">Đang làm</option><option value="ON_LEAVE">Tạm nghỉ</option><option value="INACTIVE">Nghỉ việc</option></select></label></div><div className="actions"><button type="button" onClick={() => setShowForm(false)}>Hủy</button><button className="primary">{editingId ? 'Cập nhật' : 'Lưu nhân viên'}</button></div></form></div>}
+    {showForm && editable && <div className="modal-backdrop"><form className="modal-card employee-modal employee-compact-modal" onSubmit={save}>
+      <div className="modal-head"><div><span>NHÂN VIÊN</span><h2>{editingId ? 'Cập nhật hồ sơ' : 'Thêm nhân viên mới'}</h2></div><button type="button" onClick={() => setShowForm(false)}>✕</button></div>
+
+      <div className="employee-form-table">
+        <div className="employee-form-row">
+          <label className="employee-form-cell"><span>Mã NV</span><input maxLength={30} value={form.employee_code} onChange={e => setForm({ ...form, employee_code: e.target.value.toUpperCase() })} required /></label>
+          <label className="employee-form-cell"><span>Họ tên</span><input maxLength={160} value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required /></label>
+        </div>
+        <div className="employee-form-row">
+          <label className="employee-form-cell"><span>Email</span><input type="email" maxLength={160} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label>
+          <label className="employee-form-cell"><span>Điện thoại</span><input inputMode="numeric" maxLength={10} placeholder="9-10 chữ số" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} /></label>
+        </div>
+        <div className="employee-form-row">
+          <label className="employee-form-cell"><span>Ngày sinh</span><input type="date" value={form.date_of_birth} max={new Date().toISOString().slice(0, 10)} onChange={e => setForm({ ...form, date_of_birth: e.target.value })} /></label>
+          <label className="employee-form-cell"><span>Giới tính</span><select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}><option value="">-- Chọn --</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option></select></label>
+        </div>
+        <div className="employee-form-row">
+          <label className="employee-form-cell"><span>Ngày vào làm</span><input type="date" value={form.hire_date} onChange={e => setForm({ ...form, hire_date: e.target.value })} required /></label>
+          <label className="employee-form-cell"><span>Phòng ban</span><select value={form.department_id} onChange={e => setForm({ ...form, department_id: e.target.value })}><option value="">-- Chưa gán --</option>{departments.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        </div>
+        <div className="employee-form-row">
+          <label className="employee-form-cell"><span>Chức vụ</span><select value={form.position_id} onChange={e => setForm({ ...form, position_id: e.target.value })}><option value="">-- Chưa gán --</option>{positions.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+          <label className="employee-form-cell"><span>Lương cơ bản</span><input type="number" min="0" step="1000" value={form.base_salary} onChange={e => setForm({ ...form, base_salary: e.target.value })} /></label>
+        </div>
+        <div className="employee-form-row employee-form-row-wide">
+          <label className="employee-form-cell employee-form-cell-wide"><span>Địa chỉ</span><textarea maxLength={1000} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></label>
+        </div>
+        <div className="employee-form-row employee-form-row-last">
+          <label className="employee-form-cell"><span>Trạng thái</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="ACTIVE">Đang làm</option><option value="ON_LEAVE">Tạm nghỉ</option><option value="INACTIVE">Nghỉ việc</option></select></label>
+          <div className="employee-form-summary"><span>Thông tin nhân viên được gom trong một bảng để dễ nhập và kiểm tra.</span></div>
+        </div>
+      </div>
+
+      <div className="actions employee-form-actions"><button type="button" onClick={() => setShowForm(false)}>Hủy</button><button className="primary">{editingId ? 'Cập nhật' : 'Lưu nhân viên'}</button></div>
+    </form></div>}
   </section>
 }
