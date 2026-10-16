@@ -1,0 +1,1 @@
+export default function Placeholder({title,desc}){return <section><div className="page-title"><div><span>NHÂN SỰ</span><h1>{title}</h1><p>{desc}</p></div></div><div className="panel empty"><h2>{title}</h2><p>Backend API cho module này đã có sẵn. Có thể tiếp tục mở rộng form CRUD chi tiết theo nghiệp vụ doanh nghiệp.</p></div></section>}
