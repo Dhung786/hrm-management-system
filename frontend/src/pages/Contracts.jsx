@@ -76,10 +76,17 @@ export default function Contracts({ user }) {
   const active = items.filter(x => x.status === 'ACTIVE').length
   const expired = items.filter(x => x.status === 'EXPIRED').length
   const terminated = items.filter(x => x.status === 'TERMINATED').length
-  const title = role === 'EMPLOYEE' ? 'Hợp đồng của tôi' : role === 'PAYROLL' ? 'Đối soát hợp đồng' : 'Hợp đồng lao động'
+  const title = role === 'EMPLOYEE' ? 'Hợp đồng của tôi' : role === 'MANAGER' ? 'Hợp đồng phòng ban' : role === 'PAYROLL' ? 'Đối soát hợp đồng' : 'Hợp đồng lao động'
+  const description = editable
+    ? 'Tạo hợp đồng và cập nhật trạng thái hợp đồng lao động của nhân viên.'
+    : role === 'MANAGER'
+      ? `Chỉ xem hợp đồng của nhân viên thuộc ${user?.department_name || 'phòng ban bạn phụ trách'}.`
+      : role === 'PAYROLL'
+        ? 'Chỉ xem thông tin hợp đồng và mức lương phục vụ đối soát tiền lương.'
+        : 'Chỉ xem hợp đồng lao động thuộc hồ sơ của chính bạn.'
 
   return <section>
-    <div className="page-title page-title-modern"><div><span>HỢP ĐỒNG</span><h1>{title}</h1><p>{editable ? 'Tạo và quản lý hợp đồng lao động của nhân viên.' : role === 'PAYROLL' ? 'Xem thông tin hợp đồng phục vụ đối soát tiền lương.' : 'Xem hợp đồng thuộc hồ sơ của chính bạn.'}</p></div>{editable && <button className="primary page-primary-action" onClick={() => setShowCreate(true)}><Plus size={17}/> Tạo hợp đồng</button>}</div>
+    <div className="page-title page-title-modern"><div><span>HỢP ĐỒNG</span><h1>{title}</h1><p>{description}</p></div>{editable && <button className="primary page-primary-action" onClick={() => setShowCreate(true)}><Plus size={17}/> Tạo hợp đồng</button>}</div>
 
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><FileText size={20}/></div><div><span>Tổng hợp đồng</span><strong>{items.length}</strong><small>Tất cả hợp đồng trong phạm vi</small></div></div>
