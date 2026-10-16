@@ -6,8 +6,8 @@ const blank = { employee_id: '', contract_no: '', contract_type: 'FIXED_TERM', s
 const typeLabel = { FIXED_TERM: 'Có thời hạn', INDEFINITE: 'Không xác định thời hạn', PROBATION: 'Thử việc' }
 const statusLabel = { ACTIVE: 'Đang hiệu lực', EXPIRED: 'Hết hạn', TERMINATED: 'Đã chấm dứt' }
 
-export default function Contracts() {
-  const role = localStorage.getItem('role')
+export default function Contracts({ user }) {
+  const role = user?.role
   const editable = canManageEmployees(role)
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
@@ -34,13 +34,16 @@ export default function Contracts() {
     } catch (e) { setError(e.message) }
   }
 
-  const empName = id => employees.find(x => x.id === id)?.full_name || `#${id}`
+  const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
+  const active = items.filter(x => x.status === 'ACTIVE').length
+  const expired = items.filter(x => x.status === 'EXPIRED').length
 
   return <section>
-    <div className="page-title"><div><span>HỢP ĐỒNG</span><h1>{role === 'EMPLOYEE' ? 'Hợp đồng của tôi' : 'Hợp đồng lao động'}</h1><p>{editable ? 'Quản lý số hợp đồng, loại hợp đồng, thời hạn và mức lương.' : 'Hợp đồng hiển thị theo phạm vi quyền của tài khoản.'}</p></div></div>
+    <div className="page-title"><div><span>HỢP ĐỒNG</span><h1>{role === 'EMPLOYEE' ? 'Hợp đồng của tôi' : role === 'PAYROLL' ? 'Đối soát hợp đồng' : 'Hợp đồng lao động'}</h1><p>{editable ? 'Tạo và quản lý hợp đồng lao động của nhân viên.' : role === 'PAYROLL' ? 'Xem thông tin hợp đồng phục vụ đối soát tiền lương.' : 'Xem hợp đồng thuộc hồ sơ của chính bạn.'}</p></div></div>
+    <div className="mini-stats"><div><span>Tổng hợp đồng</span><b>{items.length}</b></div><div><span>Đang hiệu lực</span><b>{active}</b></div><div><span>Hết hạn</span><b>{expired}</b></div><div><span>Vai trò</span><b>{user?.role_label || '-'}</b></div></div>
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
-    <div className={editable ? 'split' : ''}>
-      {editable && <div className="panel"><h2>Tạo hợp đồng</h2><form className="form-grid" onSubmit={save}>
+    <div className={editable ? 'split' : 'work-grid single'}>
+      {editable && <div className="panel form-panel"><div className="panel-heading"><div><span>HỢP ĐỒNG MỚI</span><h2>Tạo hợp đồng</h2></div></div><form className="form-grid" onSubmit={save}>
         <label>Nhân viên<select value={form.employee_id} onChange={e => { const id = e.target.value; const emp = employees.find(x => x.id === Number(id)); setForm({ ...form, employee_id: id, salary: emp?.base_salary || 0 }) }} required><option value="">-- Chọn nhân viên --</option>{employees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select></label>
         <label>Số hợp đồng<input maxLength={60} value={form.contract_no} onChange={e => setForm({ ...form, contract_no: e.target.value.toUpperCase() })} required /></label>
         <label>Loại hợp đồng<select value={form.contract_type} onChange={e => setForm({ ...form, contract_type: e.target.value })}>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -50,7 +53,7 @@ export default function Contracts() {
         <label>Trạng thái<select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <button className="primary">Lưu hợp đồng</button>
       </form></div>}
-      <div className="panel grow"><div className="table-wrap"><table><thead><tr><th>Số HĐ</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Lương</th><th>Trạng thái</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td>{typeLabel[x.contract_type] || x.contract_type}</td><td>{x.start_date} → {x.end_date || 'Không thời hạn'}</td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td><span className={x.status === 'ACTIVE' ? 'badge' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div></div>
+      <div className="panel grow data-panel"><div className="panel-heading"><div><span>DANH SÁCH</span><h2>Hợp đồng hiện có</h2></div><small>{role === 'EMPLOYEE' ? 'Chỉ hợp đồng của bạn' : 'Theo phạm vi quyền hiện tại'}</small></div><div className="table-wrap"><table><thead><tr><th>Số HĐ</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Lương</th><th>Trạng thái</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td>{typeLabel[x.contract_type] || x.contract_type}</td><td>{x.start_date} → {x.end_date || 'Không thời hạn'}</td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td><span className={x.status === 'ACTIVE' ? 'badge' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div></div>
     </div>
   </section>
 }
