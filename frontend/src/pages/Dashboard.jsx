@@ -29,35 +29,35 @@ const ROLE_ACTIONS = {
     ['profile', 'Hồ sơ của tôi', 'Thông tin tài khoản quản trị', UserRound],
   ],
   HR: [
-    ['employees', 'Quản lý nhân viên', 'Thêm, sửa, theo dõi hồ sơ và trạng thái làm việc', Users],
+    ['employees', 'Nhân viên', 'Thêm, sửa, theo dõi hồ sơ và trạng thái làm việc', Users],
     ['organization', 'Phòng ban & chức vụ', 'Quản lý cơ cấu tổ chức doanh nghiệp', Building2],
-    ['attendance', 'Theo dõi chấm công', 'Xem dữ liệu giờ vào/ra của nhân sự', Clock3],
-    ['leaves', 'Quản lý nghỉ phép', 'Tạo, duyệt hoặc từ chối đơn nghỉ', CalendarDays],
-    ['contracts', 'Quản lý hợp đồng', 'Tạo hợp đồng và cập nhật trạng thái', FileText],
+    ['attendance', 'Chấm công', 'Xem dữ liệu giờ vào/ra của nhân sự', Clock3],
+    ['leaves', 'Nghỉ phép', 'Tạo, duyệt hoặc từ chối đơn nghỉ', CalendarDays],
+    ['contracts', 'Hợp đồng', 'Tạo hợp đồng và cập nhật trạng thái', FileText],
     ['reviews', 'Đánh giá hiệu suất', 'Tạo và theo dõi kết quả đánh giá', Star],
     ['recruitment', 'Tuyển dụng', 'Quản lý tin tuyển dụng và ứng viên', BriefcaseBusiness],
     ['profile', 'Hồ sơ của tôi', 'Thông tin cá nhân và tài khoản', UserRound],
   ],
   MANAGER: [
-    ['employees', 'Nhân viên phòng tôi', 'Chỉ xem nhân viên thuộc phòng phụ trách', Users],
-    ['attendance', 'Chấm công phòng', 'Theo dõi giờ vào/ra của nhân viên trong phòng', Clock3],
-    ['leaves', 'Duyệt nghỉ phép', 'Duyệt hoặc từ chối đơn nghỉ của nhân viên trong phòng', CalendarDays],
-    ['contracts', 'Hợp đồng phòng', 'Chỉ xem hợp đồng của nhân viên thuộc phòng', FileText],
-    ['reviews', 'Đánh giá nhân viên', 'Tạo đánh giá cho nhân viên trong phòng', Star],
+    ['employees', 'Nhân viên', 'Chỉ xem nhân viên thuộc phòng phụ trách', Users],
+    ['attendance', 'Chấm công', 'Theo dõi giờ vào/ra của nhân viên trong phòng', Clock3],
+    ['leaves', 'Nghỉ phép', 'Duyệt hoặc từ chối đơn nghỉ của nhân viên trong phòng', CalendarDays],
+    ['contracts', 'Hợp đồng', 'Chỉ xem hợp đồng của nhân viên thuộc phòng', FileText],
+    ['reviews', 'Đánh giá hiệu suất', 'Tạo đánh giá cho nhân viên trong phòng', Star],
     ['profile', 'Hồ sơ của tôi', 'Thông tin cá nhân và tài khoản', UserRound],
   ],
   PAYROLL: [
-    ['attendance', 'Đối soát chấm công', 'Xem dữ liệu giờ công phục vụ tính lương', Clock3],
-    ['payroll', 'Quản lý bảng lương', 'Lập bảng lương, phụ cấp, thưởng, khấu trừ và trạng thái chi trả', WalletCards],
-    ['contracts', 'Đối soát hợp đồng', 'Chỉ xem thông tin hợp đồng và mức lương liên quan', FileText],
+    ['attendance', 'Chấm công', 'Xem dữ liệu giờ công phục vụ tính lương', Clock3],
+    ['payroll', 'Tiền lương', 'Lập bảng lương, phụ cấp, thưởng, khấu trừ và trạng thái chi trả', WalletCards],
+    ['contracts', 'Hợp đồng', 'Chỉ xem thông tin hợp đồng và mức lương liên quan', FileText],
     ['profile', 'Hồ sơ của tôi', 'Thông tin cá nhân và tài khoản', UserRound],
   ],
   EMPLOYEE: [
-    ['attendance', 'Chấm công của tôi', 'Check-in, check-out và xem lịch sử cá nhân', Clock3],
-    ['leaves', 'Nghỉ phép của tôi', 'Gửi và theo dõi đơn nghỉ của bản thân', CalendarDays],
-    ['payroll', 'Phiếu lương của tôi', 'Chỉ xem bảng lương của bản thân', WalletCards],
-    ['contracts', 'Hợp đồng của tôi', 'Chỉ xem hợp đồng lao động của bản thân', FileText],
-    ['reviews', 'Đánh giá của tôi', 'Chỉ xem kết quả đánh giá hiệu suất của bản thân', Star],
+    ['attendance', 'Chấm công', 'Check-in, check-out và xem lịch sử cá nhân', Clock3],
+    ['leaves', 'Nghỉ phép', 'Gửi và theo dõi đơn nghỉ của bản thân', CalendarDays],
+    ['payroll', 'Tiền lương', 'Chỉ xem bảng lương của bản thân', WalletCards],
+    ['contracts', 'Hợp đồng', 'Chỉ xem hợp đồng lao động của bản thân', FileText],
+    ['reviews', 'Đánh giá hiệu suất', 'Chỉ xem kết quả đánh giá hiệu suất của bản thân', Star],
     ['profile', 'Hồ sơ của tôi', 'Thông tin cá nhân và đổi mật khẩu', UserRound],
   ],
 }
@@ -142,7 +142,7 @@ export default function Dashboard({ user, onNavigate }) {
     <div className="workspace-panel">
       <div className="workspace-panel-heading">
         <div><span className="eyebrow">CHỨC NĂNG</span><h2>Công việc của bạn</h2></div>
-        <small>Chỉ hiển thị những chức năng thực tế mà vai trò này được sử dụng</small>
+        <small>Tên chức năng được dùng thống nhất trong toàn hệ thống; quyền truy cập vẫn phụ thuộc vai trò</small>
       </div>
       <div className="workspace-actions">
         {actions.map(([target, title, note, Icon]) => <button type="button" className="workspace-action" key={target} onClick={() => onNavigate?.(target)}>
