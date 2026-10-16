@@ -24,23 +24,33 @@ def call(path, method="GET", body=None, token=None):
         except Exception:
             pass
         return exc.code, payload
+    except urllib.error.URLError as exc:
+        return 0, {"detail": f"Không kết nối được tới {BASE}: {exc.reason}"}
 
 
 def check(name, condition, detail=""):
-    mark = "PASS" if condition else "FAIL"
+    passed = bool(condition)
+    mark = "PASS" if passed else "FAIL"
     print(f"[{mark}] {name}{': ' + str(detail) if detail else ''}")
-    return condition
+    return passed
 
 
 def main():
     ok = True
+
     status, data = call("/api/health")
     ok &= check("health", status == 200, data)
 
-    status, data = call("/api/auth/login", "POST", {"email": "admin@hr.local", "password": "Admin@123"})
-    ok &= check("login", status == 200 and isinstance(data, dict) and data.get("access_token"), data)
-    if not ok:
+    status, data = call(
+        "/api/auth/login",
+        "POST",
+        {"email": "admin@hr.local", "password": "Admin@123"},
+    )
+    login_ok = status == 200 and isinstance(data, dict) and bool(data.get("access_token"))
+    ok &= check("login", login_ok, f"HTTP {status}, role={data.get('role') if isinstance(data, dict) else None}")
+    if not login_ok:
         sys.exit(1)
+
     token = data["access_token"]
 
     endpoints = [
@@ -57,7 +67,11 @@ def main():
     ]
     for endpoint in endpoints:
         status, data = call(endpoint, token=token)
-        ok &= check(f"GET {endpoint}", status == 200 and isinstance(data, list), f"HTTP {status}")
+        ok &= check(
+            f"GET {endpoint}",
+            status == 200 and isinstance(data, list),
+            f"HTTP {status}",
+        )
 
     # Logic regression: phone > 10 digits must be rejected before reaching the DB.
     status, data = call(
