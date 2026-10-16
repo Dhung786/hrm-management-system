@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_roles
+from app.dependencies import ensure_manager_employee_scope, get_current_user, manager_department_id, require_roles
 from app.models import Attendance, Employee, UserAccount
 from app.schemas import AttendanceIn, AttendanceOut
 
@@ -25,14 +25,28 @@ def list_attendance(db: Session = Depends(get_db), user: UserAccount = Depends(g
         if not user.employee_id:
             return []
         stmt = stmt.where(Attendance.employee_id == user.employee_id)
+    elif user.role == "MANAGER":
+        department_id = manager_department_id(user, db)
+        if not department_id:
+            return []
+        stmt = stmt.where(
+            Attendance.employee_id.in_(select(Employee.id).where(Employee.department_id == department_id))
+        )
+    elif user.role not in {"ADMIN", "HR", "PAYROLL"}:
+        raise HTTPException(403, "Bạn không có quyền xem dữ liệu chấm công")
     return list(db.scalars(stmt).all())
 
 
 @router.post("", response_model=AttendanceOut)
-def upsert_attendance(payload: AttendanceIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR", "MANAGER"))):
+def upsert_attendance(
+    payload: AttendanceIn,
+    db: Session = Depends(get_db),
+    user: UserAccount = Depends(require_roles("ADMIN", "HR", "MANAGER")),
+):
     employee = db.get(Employee, payload.employee_id)
     if not employee:
         raise HTTPException(404, "Không tìm thấy nhân viên")
+    ensure_manager_employee_scope(user, employee, db)
     if employee.status == "INACTIVE":
         raise HTTPException(400, "Không thể chấm công cho nhân viên đã nghỉ việc")
     if payload.work_date > _today_local():
