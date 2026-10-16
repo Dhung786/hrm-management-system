@@ -3,9 +3,10 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.database import get_db
-from app.models import UserAccount
+from app.models import Employee, UserAccount
 from app.security import ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -31,3 +32,22 @@ def require_roles(*roles: str):
             raise HTTPException(status_code=403, detail="Bạn không có quyền thực hiện chức năng này")
         return user
     return dependency
+
+
+def current_employee(user: UserAccount, db: Session) -> Employee | None:
+    if not user.employee_id:
+        return None
+    return db.get(Employee, user.employee_id)
+
+
+def manager_department_id(user: UserAccount, db: Session) -> int | None:
+    employee = current_employee(user, db)
+    return employee.department_id if employee else None
+
+
+def ensure_manager_employee_scope(user: UserAccount, employee: Employee, db: Session) -> None:
+    if user.role != "MANAGER":
+        return
+    department_id = manager_department_id(user, db)
+    if not department_id or employee.department_id != department_id:
+        raise HTTPException(403, "Trưởng phòng chỉ được thao tác với nhân viên thuộc phòng ban của mình")
