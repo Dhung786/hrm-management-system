@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Search, UserRoundCheck, UserRoundX, UsersRound, Workflow } from 'lucide-react'
+import { CircleAlert, Plus, Search, UserRoundCheck, UserRoundX, UsersRound } from 'lucide-react'
 import { request } from '../api'
 import { canManageEmployees } from '../roles'
 
@@ -94,7 +94,7 @@ export default function Employees({ user }) {
   useEffect(() => { if (page > totalPages) setPage(totalPages) }, [page, totalPages])
 
   const activeCount = items.filter(x => x.status === 'ACTIVE').length
-  const leaveCount = items.filter(x => x.status === 'ON_LEAVE').length
+  const incompleteCount = items.filter(x => x.status === 'ACTIVE' && (!x.phone || !x.department_id || !x.position_id)).length
   const inactiveCount = items.filter(x => x.status === 'INACTIVE').length
   const title = role === 'MANAGER' ? 'Nhân viên thuộc phòng của tôi' : 'Quản lý nhân viên'
 
@@ -107,15 +107,15 @@ export default function Employees({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><UsersRound size={20}/></div><div><span>Tổng nhân viên</span><strong>{items.length}</strong><small>Tất cả hồ sơ trong phạm vi</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><UserRoundCheck size={20}/></div><div><span>Đang làm việc</span><strong>{activeCount}</strong><small>Nhân viên đang hoạt động</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><Workflow size={20}/></div><div><span>Tạm nghỉ</span><strong>{leaveCount}</strong><small>Nhân viên đang tạm nghỉ</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><CircleAlert size={20}/></div><div><span>Thiếu thông tin</span><strong>{incompleteCount}</strong><small>{incompleteCount ? 'Thiếu SĐT, phòng ban hoặc chức vụ' : 'Hồ sơ nhân viên đang làm đã đầy đủ'}</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><UserRoundX size={20}/></div><div><span>Đã nghỉ việc</span><strong>{inactiveCount}</strong><small>Hồ sơ vẫn được lưu lịch sử</small></div></div>
     </div>
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
     <div className="panel data-panel management-list-panel">
-      <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm theo họ tên, mã, email, SĐT..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="ALL">Tất cả phòng ban</option>{departments.map(x => <option key={x.id} value={String(x.id)}>{x.name}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang làm</option><option value="ON_LEAVE">Tạm nghỉ</option><option value="INACTIVE">Đã nghỉ việc</option></select></div>
-      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Mã NV</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{pageItems.map((x,index) => <tr key={x.id}><td>{pageStart + index + 1}</td><td><b>{x.employee_code}</b></td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{x.email}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : x.status === 'ON_LEAVE' ? 'badge badge-wait' : 'badge'}>{x.status === 'ACTIVE' ? 'Đang làm' : x.status === 'ON_LEAVE' ? 'Tạm nghỉ' : 'Đã nghỉ việc'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}</div></td>}</tr>)}</tbody></table></div>
+      <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm theo họ tên, mã, email, SĐT..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="ALL">Tất cả phòng ban</option>{departments.map(x => <option key={x.id} value={String(x.id)}>{x.name}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang làm</option><option value="INACTIVE">Đã nghỉ việc</option></select></div>
+      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Mã NV</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{pageItems.map((x,index) => <tr key={x.id}><td>{pageStart + index + 1}</td><td><b>{x.employee_code}</b></td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{x.email}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : 'badge'}>{x.status === 'INACTIVE' ? 'Đã nghỉ việc' : 'Đang làm'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}</div></td>}</tr>)}</tbody></table></div>
       <div className="table-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div className="actions" style={{ alignItems: 'center' }}><span>Số dòng:</span><select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ padding: '7px 10px' }}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option></select></div>
         <span>{filteredItems.length ? `Hiển thị ${pageStart + 1}-${Math.min(pageStart + pageSize, filteredItems.length)} / ${filteredItems.length} nhân viên` : 'Không có nhân viên phù hợp'}</span>
@@ -155,8 +155,8 @@ export default function Employees({ user }) {
           <label className="employee-form-cell employee-form-cell-wide"><span>Địa chỉ</span><textarea maxLength={1000} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></label>
         </div>
         <div className="employee-form-row employee-form-row-last">
-          <label className="employee-form-cell"><span>Trạng thái</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="ACTIVE">Đang làm</option><option value="ON_LEAVE">Tạm nghỉ</option><option value="INACTIVE">Nghỉ việc</option></select></label>
-          <div className="employee-form-summary"><span>Thông tin nhân viên được gom trong một bảng để dễ nhập và kiểm tra.</span></div>
+          <label className="employee-form-cell"><span>Trạng thái</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="ACTIVE">Đang làm</option><option value="INACTIVE">Nghỉ việc</option></select></label>
+          <div className="employee-form-summary"><span>Trạng thái nhân viên chỉ gồm đang làm việc hoặc đã nghỉ việc. Hồ sơ đã nghỉ vẫn được giữ lại để tra cứu lịch sử.</span></div>
         </div>
       </div>
 
