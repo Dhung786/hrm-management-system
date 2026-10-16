@@ -64,7 +64,7 @@ export default function Recruitment({ user }) {
   }), [candidates, keyword, candidateStage, jobMap])
 
   const openJobs = jobs.filter(x => x.status === 'OPEN').length
-  const interviewing = candidates.filter(x => x.stage === 'INTERVIEW').length
+  const unassignedCandidates = candidates.filter(x => !x.job_posting_id).length
   const hired = candidates.filter(x => x.stage === 'HIRED').length
 
   return <section>
@@ -76,7 +76,7 @@ export default function Recruitment({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><BriefcaseBusiness size={20}/></div><div><span>Vị trí tuyển</span><strong>{jobs.length}</strong><small>Tổng tin tuyển dụng</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><UserRoundSearch size={20}/></div><div><span>Đang tuyển</span><strong>{openJobs}</strong><small>Vị trí đang mở</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><UsersRound size={20}/></div><div><span>Phỏng vấn</span><strong>{interviewing}</strong><small>Ứng viên ở vòng phỏng vấn</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><UsersRound size={20}/></div><div><span>Chưa gán vị trí</span><strong>{unassignedCandidates}</strong><small>{unassignedCandidates ? 'Ứng viên cần được gán vào tin tuyển dụng' : 'Không có ứng viên cần xử lý'}</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><UserCheck size={20}/></div><div><span>Đã tuyển</span><strong>{hired}</strong><small>Ứng viên đã nhận việc</small></div></div>
     </div>
 
