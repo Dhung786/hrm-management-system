@@ -17,11 +17,13 @@ def list_payroll(db: Session = Depends(get_db), user: UserAccount = Depends(get_
         if not user.employee_id:
             return []
         stmt = stmt.where(Payroll.employee_id == user.employee_id)
+    elif user.role not in {"ADMIN", "PAYROLL"}:
+        raise HTTPException(403, "Bạn không có quyền xem dữ liệu tiền lương")
     return list(db.scalars(stmt).all())
 
 
 @router.post("", response_model=PayrollOut)
-def create_payroll(payload: PayrollIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR"))):
+def create_payroll(payload: PayrollIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "PAYROLL"))):
     employee = db.get(Employee, payload.employee_id)
     if not employee:
         raise HTTPException(404, "Không tìm thấy nhân viên")
@@ -39,12 +41,15 @@ def create_payroll(payload: PayrollIn, db: Session = Depends(get_db), _=Depends(
 
 
 @router.put("/{payroll_id}", response_model=PayrollOut)
-def update_payroll(payroll_id: int, payload: PayrollIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR"))):
+def update_payroll(payroll_id: int, payload: PayrollIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "PAYROLL"))):
     obj = db.get(Payroll, payroll_id)
     if not obj:
         raise HTTPException(404, "Không tìm thấy bảng lương")
-    if not db.get(Employee, payload.employee_id):
+    employee = db.get(Employee, payload.employee_id)
+    if not employee:
         raise HTTPException(404, "Không tìm thấy nhân viên")
+    if employee.status == "INACTIVE":
+        raise HTTPException(400, "Không thể cập nhật bảng lương cho nhân viên đã nghỉ việc")
     duplicate = db.scalar(
         select(Payroll).where(
             Payroll.id != payroll_id,
