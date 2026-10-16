@@ -19,6 +19,7 @@ export default function Payroll({ user }) {
   const [periodFilter, setPeriodFilter] = useState('ALL')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [updatingStatusId, setUpdatingStatusId] = useState(null)
 
   const load = async () => {
     try {
@@ -36,11 +37,32 @@ export default function Payroll({ user }) {
     if (nums.some(k => Number(form[k]) < 0)) return setError('Các khoản tiền không được âm')
     if (Number(form.deduction) > Number(form.base_salary) + Number(form.allowance) + Number(form.bonus)) return setError('Khấu trừ không được lớn hơn tổng thu nhập')
     try {
-      const payload = { ...form, employee_id: Number(form.employee_id), month: Number(form.month), year: Number(form.year) }
+      const payload = { ...form, status: 'DRAFT', employee_id: Number(form.employee_id), month: Number(form.month), year: Number(form.year) }
       nums.forEach(k => { payload[k] = Number(form[k]) })
       await request('/api/payroll', { method: 'POST', body: JSON.stringify(payload) })
-      setForm(blank); setShowCreate(false); setMessage('Tạo bảng lương thành công'); await load()
+      setForm(blank); setShowCreate(false); setMessage('Tạo bảng lương thành công ở trạng thái Nháp'); await load()
     } catch (e) { setError(e.message) }
+  }
+
+  const updateStatus = async (item, nextStatus) => {
+    if (item.status === nextStatus) return
+    setError(''); setMessage(''); setUpdatingStatusId(item.id)
+    try {
+      const payload = {
+        employee_id: Number(item.employee_id),
+        month: Number(item.month),
+        year: Number(item.year),
+        base_salary: Number(item.base_salary),
+        allowance: Number(item.allowance || 0),
+        bonus: Number(item.bonus || 0),
+        deduction: Number(item.deduction || 0),
+        status: nextStatus,
+      }
+      await request(`/api/payroll/${item.id}`, { method: 'PUT', body: JSON.stringify(payload) })
+      setMessage(`Đã chuyển bảng lương sang trạng thái ${statusLabel[nextStatus]}`)
+      await load()
+    } catch (e) { setError(e.message) }
+    finally { setUpdatingStatusId(null) }
   }
 
   const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
@@ -58,7 +80,7 @@ export default function Payroll({ user }) {
   const totalNet = items.reduce((sum, x) => sum + Number(x.net_salary || 0), 0)
 
   return <section>
-    <div className="page-title page-title-modern"><div><span>TIỀN LƯƠNG</span><h1>{role === 'EMPLOYEE' ? 'Phiếu lương của tôi' : 'Quản lý bảng lương'}</h1><p>{editable ? 'Lập bảng lương, phụ cấp, thưởng, khấu trừ và theo dõi trạng thái chi trả.' : 'Xem lịch sử lương thuộc hồ sơ của chính bạn.'}</p></div>{editable && <button className="primary page-primary-action" onClick={() => setShowCreate(true)}><Plus size={17}/> Lập bảng lương</button>}</div>
+    <div className="page-title page-title-modern"><div><span>TIỀN LƯƠNG</span><h1>{role === 'EMPLOYEE' ? 'Phiếu lương của tôi' : 'Quản lý bảng lương'}</h1><p>{editable ? 'Lập bảng lương, phụ cấp, thưởng, khấu trừ và theo dõi trạng thái chi trả.' : 'Xem lịch sử lương thuộc hồ sơ của chính bạn.'}</p></div>{editable && <button className="primary page-primary-action" onClick={() => { setForm(blank); setShowCreate(true) }}><Plus size={17}/> Lập bảng lương</button>}</div>
 
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><WalletCards size={20}/></div><div><span>Bảng lương</span><strong>{items.length}</strong><small>Tổng số bảng lương</small></div></div>
@@ -69,12 +91,16 @@ export default function Payroll({ user }) {
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
-    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên hoặc kỳ lương..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={periodFilter} onChange={e => setPeriodFilter(e.target.value)}><option value="ALL">Tất cả kỳ lương</option>{periods.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Kỳ lương</th><th>Lương cơ bản</th><th>Phụ cấp</th><th>Thưởng</th><th>Khấu trừ</th><th>Thực nhận</th><th>Trạng thái</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.month}/{x.year}</td><td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td><td>{Number(x.allowance).toLocaleString('vi-VN')} đ</td><td>{Number(x.bonus).toLocaleString('vi-VN')} đ</td><td>{Number(x.deduction).toLocaleString('vi-VN')} đ</td><td><b>{Number(x.net_salary).toLocaleString('vi-VN')} đ</b></td><td><span className={x.status === 'PAID' ? 'badge' : x.status === 'APPROVED' ? 'badge badge-wait' : 'role-chip'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} bảng lương</div></div>
+    <div className="panel data-panel management-list-panel">
+      <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên hoặc kỳ lương..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={periodFilter} onChange={e => setPeriodFilter(e.target.value)}><option value="ALL">Tất cả kỳ lương</option>{periods.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Kỳ lương</th><th>Lương cơ bản</th><th>Phụ cấp</th><th>Thưởng</th><th>Khấu trừ</th><th>Thực nhận</th><th>Trạng thái</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.month}/{x.year}</td><td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td><td>{Number(x.allowance).toLocaleString('vi-VN')} đ</td><td>{Number(x.bonus).toLocaleString('vi-VN')} đ</td><td>{Number(x.deduction).toLocaleString('vi-VN')} đ</td><td><b>{Number(x.net_salary).toLocaleString('vi-VN')} đ</b></td><td>{editable ? <select className="table-status-select" value={x.status} disabled={updatingStatusId === x.id} onChange={e => updateStatus(x, e.target.value)}><option value="DRAFT">Nháp</option><option value="APPROVED">Đã duyệt</option><option value="PAID">Đã trả</option></select> : <span className={x.status === 'PAID' ? 'badge' : x.status === 'APPROVED' ? 'badge badge-wait' : 'role-chip'}>{statusLabel[x.status] || x.status}</span>}</td></tr>)}</tbody></table></div>
+      <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} bảng lương</div>
+    </div>
 
     {showCreate && editable && <div className="modal-backdrop"><form className="modal-card payroll-modal employee-compact-modal" onSubmit={save}>
       <div className="modal-head"><div><span>TIỀN LƯƠNG</span><h2>Lập bảng lương</h2></div><button type="button" onClick={() => setShowCreate(false)}>✕</button></div>
       <div className="employee-form-table">
-        <div className="employee-form-row"><label className="employee-form-cell"><span>Nhân viên</span><select value={form.employee_id} onChange={e => { const id = e.target.value; const emp = employees.find(x => x.id === Number(id)); setForm({ ...form, employee_id: id, base_salary: emp?.base_salary || 0 }) }} required><option value="">-- Chọn nhân viên --</option>{employees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select></label><label className="employee-form-cell"><span>Trạng thái</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="DRAFT">Nháp</option><option value="APPROVED">Đã duyệt</option><option value="PAID">Đã trả</option></select></label></div>
+        <div className="employee-form-row"><label className="employee-form-cell employee-form-cell-wide"><span>Nhân viên</span><select value={form.employee_id} onChange={e => { const id = e.target.value; const emp = employees.find(x => x.id === Number(id)); setForm({ ...form, employee_id: id, base_salary: emp?.base_salary || 0 }) }} required><option value="">-- Chọn nhân viên --</option>{employees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select><small className="hint">Bảng lương mới luôn được tạo ở trạng thái Nháp. Trạng thái được cập nhật trực tiếp ở danh sách bên dưới.</small></label></div>
         <div className="employee-form-row"><label className="employee-form-cell"><span>Tháng</span><input type="number" min="1" max="12" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} required /></label><label className="employee-form-cell"><span>Năm</span><input type="number" min="2000" max="2100" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} required /></label></div>
         <div className="employee-form-row"><label className="employee-form-cell"><span>Lương cơ bản</span><input type="number" min="0" step="1000" value={form.base_salary} onChange={e => setForm({ ...form, base_salary: e.target.value })} required /></label><label className="employee-form-cell"><span>Phụ cấp</span><input type="number" min="0" step="1000" value={form.allowance} onChange={e => setForm({ ...form, allowance: e.target.value })} /></label></div>
         <div className="employee-form-row"><label className="employee-form-cell"><span>Thưởng</span><input type="number" min="0" step="1000" value={form.bonus} onChange={e => setForm({ ...form, bonus: e.target.value })} /></label><label className="employee-form-cell"><span>Khấu trừ</span><input type="number" min="0" step="1000" value={form.deduction} onChange={e => setForm({ ...form, deduction: e.target.value })} /></label></div>
