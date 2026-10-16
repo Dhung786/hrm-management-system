@@ -14,41 +14,30 @@ import Recruitment from './pages/Recruitment'
 import Accounts from './pages/Accounts'
 import Profile from './pages/Profile'
 import System from './pages/System'
+import AccessDenied from './pages/AccessDenied'
 
 // Mỗi vai trò chỉ nhìn thấy đúng nhóm chức năng phục vụ công việc của mình.
 // ADMIN vẫn có toàn quyền để quản trị, kiểm tra và hỗ trợ hệ thống.
 const access = {
   dashboard: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
-
-  // Nhân sự: quản lý hồ sơ/cơ cấu. Trưởng phòng chỉ xem phạm vi phòng mình.
   employees: ['ADMIN', 'HR', 'MANAGER'],
   organization: ['ADMIN', 'HR'],
-
-  // Chấm công: HR quản lý, Trưởng phòng theo dõi phòng mình,
-  // Kế toán dùng để đối soát lương, Nhân viên xem/chấm công bản thân.
   attendance: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
-
-  // Nghỉ phép: HR/Trưởng phòng xử lý; nhân viên tạo và theo dõi đơn của mình.
   leaves: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'],
-
-  // Tiền lương: chỉ quản trị, kế toán và chính nhân viên được xem phạm vi tương ứng.
   payroll: ['ADMIN', 'PAYROLL', 'EMPLOYEE'],
-
-  // Hợp đồng: HR quản lý; kế toán đối soát; nhân viên xem hợp đồng của mình.
   contracts: ['ADMIN', 'HR', 'PAYROLL', 'EMPLOYEE'],
-
-  // Đánh giá: HR/Trưởng phòng thực hiện; nhân viên xem kết quả của mình.
   reviews: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'],
-
-  // Tuyển dụng là nghiệp vụ riêng của bộ phận nhân sự.
   recruitment: ['ADMIN', 'HR'],
-
-  // Chỉ Quản trị hệ thống được quản lý tài khoản/phân quyền và giám sát hạ tầng.
   accounts: ['ADMIN'],
   system: ['ADMIN'],
-
-  // Ai cũng được xem hồ sơ của chính mình.
   profile: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
+}
+
+const DEFAULT_PAGE = 'dashboard'
+
+function pageFromHash() {
+  const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0].trim()
+  return raw || DEFAULT_PAGE
 }
 
 export default function App() {
@@ -56,7 +45,13 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('current_user') || 'null') } catch { return null }
   })
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState(pageFromHash)
+
+  useEffect(() => {
+    const onHashChange = () => setPage(pageFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   useEffect(() => {
     if (!logged) return
@@ -69,6 +64,12 @@ export default function App() {
       localStorage.clear(); setLogged(false); setUser(null)
     })
   }, [logged])
+
+  const navigate = (target) => {
+    setPage(target)
+    const nextHash = `#/${target}`
+    if (window.location.hash !== nextHash) window.location.hash = nextHash
+  }
 
   const pages = useMemo(() => ({
     dashboard: <Dashboard user={user} />,
@@ -89,16 +90,26 @@ export default function App() {
   if (!user) return <div className="loading-screen">Đang tải thông tin tài khoản...</div>
 
   const allowedPages = Object.fromEntries(Object.entries(access).map(([key, roles]) => [key, roles.includes(user.role)]))
-  const currentPage = allowedPages[page] ? page : 'dashboard'
+  const pageExists = Object.prototype.hasOwnProperty.call(access, page)
+  const forbidden = pageExists && !allowedPages[page]
+
+  let content
+  if (!pageExists) {
+    content = <AccessDenied user={user} page={page} notFound onHome={() => navigate(DEFAULT_PAGE)} />
+  } else if (forbidden) {
+    content = <AccessDenied user={user} page={page} onHome={() => navigate(DEFAULT_PAGE)} />
+  } else {
+    content = pages[page] || <Dashboard user={user} />
+  }
 
   const logout = () => {
     localStorage.clear()
     setUser(null)
-    setPage('dashboard')
     setLogged(false)
+    navigate(DEFAULT_PAGE)
   }
 
-  return <Shell page={currentPage} setPage={setPage} onLogout={logout} user={user} allowedPages={allowedPages}>
-    {pages[currentPage] || <Dashboard user={user} />}
+  return <Shell page={forbidden || !pageExists ? '' : page} setPage={navigate} onLogout={logout} user={user} allowedPages={allowedPages}>
+    {content}
   </Shell>
 }
