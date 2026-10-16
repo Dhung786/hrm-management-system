@@ -35,6 +35,8 @@ export default function Shell({ page, setPage, children, onLogout, user, allowed
   const managementIds = new Set(['dashboard', 'employees', 'organization', 'attendance', 'leaves', 'payroll', 'contracts', 'reviews', 'recruitment'])
   const management = visibleItems.filter(([id]) => managementIds.has(id))
   const account = visibleItems.filter(([id]) => !managementIds.has(id))
+  const workLabel = user.role === 'ADMIN' ? 'NGHIỆP VỤ QUẢN TRỊ' : 'CÔNG VIỆC CỦA BẠN'
+  const accountLabel = user.role === 'ADMIN' ? 'TÀI KHOẢN & HỆ THỐNG' : 'CÁ NHÂN'
 
   const renderItem = ([id, label, Icon]) => <button key={id} className={page === id ? 'nav active' : 'nav'} onClick={() => setPage(id)} title={label}><Icon size={18}/><span>{label}</span></button>
 
@@ -42,9 +44,9 @@ export default function Shell({ page, setPage, children, onLogout, user, allowed
     <aside className="sidebar">
       <div className="brand"><div className="logo">H</div><div><b>HRM</b><span>QUẢN LÝ NHÂN SỰ</span></div></div>
       <div className="sidebar-scroll">
-        <div className="section-label">NGHIỆP VỤ</div>
+        <div className="section-label">{workLabel}</div>
         {management.map(renderItem)}
-        {account.length > 0 && <><div className="section-label">TÀI KHOẢN & HỆ THỐNG</div>{account.map(renderItem)}</>}
+        {account.length > 0 && <><div className="section-label">{accountLabel}</div>{account.map(renderItem)}</>}
       </div>
       <div className="sidebar-user">
         <div className="avatar">{(user.full_name || user.email || 'U').charAt(0).toUpperCase()}</div>
