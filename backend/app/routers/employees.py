@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_roles
-from app.models import Department, Employee, Position
+from app.dependencies import get_current_user, manager_department_id, require_roles
+from app.models import Department, Employee, Position, UserAccount
 from app.schemas import DepartmentIn, DepartmentOut, EmployeeIn, EmployeeOut, PositionIn, PositionOut
 
 router = APIRouter(prefix="/api/hr", tags=["human-resources"])
@@ -26,20 +26,60 @@ def _commit_or_conflict(db: Session, message: str) -> None:
         raise HTTPException(409, message)
 
 
+def _employee_visible_to(user: UserAccount, employee: Employee, db: Session) -> bool:
+    if user.role in {"ADMIN", "HR", "PAYROLL"}:
+        return True
+    if user.role == "EMPLOYEE":
+        return user.employee_id == employee.id
+    if user.role == "MANAGER":
+        department_id = manager_department_id(user, db)
+        return bool(department_id and employee.department_id == department_id)
+    return False
+
+
 @router.get("/employees", response_model=list[EmployeeOut])
-def list_employees(q: str | None = Query(default=None, max_length=100), db: Session = Depends(get_db), _=Depends(get_current_user)):
+def list_employees(
+    q: str | None = Query(default=None, max_length=100),
+    db: Session = Depends(get_db),
+    user: UserAccount = Depends(get_current_user),
+):
     stmt = select(Employee).order_by(Employee.id.desc())
+    if user.role == "EMPLOYEE":
+        if not user.employee_id:
+            return []
+        stmt = stmt.where(Employee.id == user.employee_id)
+    elif user.role == "MANAGER":
+        department_id = manager_department_id(user, db)
+        if not department_id:
+            return []
+        stmt = stmt.where(Employee.department_id == department_id)
+    elif user.role not in {"ADMIN", "HR", "PAYROLL"}:
+        raise HTTPException(403, "Bạn không có quyền xem danh sách nhân viên")
+
     if q:
         like = f"%{q.strip()}%"
-        stmt = stmt.where(or_(Employee.full_name.ilike(like), Employee.employee_code.ilike(like), Employee.email.ilike(like), Employee.phone.ilike(like)))
+        stmt = stmt.where(
+            or_(
+                Employee.full_name.ilike(like),
+                Employee.employee_code.ilike(like),
+                Employee.email.ilike(like),
+                Employee.phone.ilike(like),
+            )
+        )
     return list(db.scalars(stmt).all())
 
 
 @router.get("/employees/{employee_id}", response_model=EmployeeOut)
-def get_employee(employee_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    user: UserAccount = Depends(get_current_user),
+):
     obj = db.get(Employee, employee_id)
     if not obj:
         raise HTTPException(404, "Không tìm thấy nhân viên")
+    if not _employee_visible_to(user, obj, db):
+        raise HTTPException(403, "Bạn không có quyền xem nhân viên này")
     return obj
 
 
