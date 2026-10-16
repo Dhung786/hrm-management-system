@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_roles
-from app.models import Candidate, Contract, Employee, JobPosting, PerformanceReview
+from app.dependencies import ensure_manager_employee_scope, get_current_user, manager_department_id, require_roles
+from app.models import Candidate, Contract, Employee, JobPosting, PerformanceReview, UserAccount
 from app.schemas import CandidateIn, CandidateOut, ContractIn, ContractOut, JobIn, JobOut, ReviewIn, ReviewOut
 
 router = APIRouter(prefix="/api/talent", tags=["talent"])
@@ -19,9 +19,28 @@ def _commit_or_conflict(db: Session, message: str) -> None:
         raise HTTPException(409, message)
 
 
+def _employee_ids_for_manager(user: UserAccount, db: Session):
+    department_id = manager_department_id(user, db)
+    if not department_id:
+        return None
+    return select(Employee.id).where(Employee.department_id == department_id)
+
+
 @router.get("/contracts", response_model=list[ContractOut])
-def contracts(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    return list(db.scalars(select(Contract).order_by(Contract.id.desc())).all())
+def contracts(db: Session = Depends(get_db), user: UserAccount = Depends(get_current_user)):
+    stmt = select(Contract).order_by(Contract.id.desc())
+    if user.role == "EMPLOYEE":
+        if not user.employee_id:
+            return []
+        stmt = stmt.where(Contract.employee_id == user.employee_id)
+    elif user.role == "MANAGER":
+        employee_ids = _employee_ids_for_manager(user, db)
+        if employee_ids is None:
+            return []
+        stmt = stmt.where(Contract.employee_id.in_(employee_ids))
+    elif user.role not in {"ADMIN", "HR", "PAYROLL"}:
+        raise HTTPException(403, "Bạn không có quyền xem hợp đồng")
+    return list(db.scalars(stmt).all())
 
 
 @router.post("/contracts", response_model=ContractOut)
@@ -58,14 +77,32 @@ def update_contract(contract_id: int, payload: ContractIn, db: Session = Depends
 
 
 @router.get("/reviews", response_model=list[ReviewOut])
-def reviews(db: Session = Depends(get_db), _=Depends(get_current_user)):
-    return list(db.scalars(select(PerformanceReview).order_by(PerformanceReview.id.desc())).all())
+def reviews(db: Session = Depends(get_db), user: UserAccount = Depends(get_current_user)):
+    stmt = select(PerformanceReview).order_by(PerformanceReview.id.desc())
+    if user.role == "EMPLOYEE":
+        if not user.employee_id:
+            return []
+        stmt = stmt.where(PerformanceReview.employee_id == user.employee_id)
+    elif user.role == "MANAGER":
+        employee_ids = _employee_ids_for_manager(user, db)
+        if employee_ids is None:
+            return []
+        stmt = stmt.where(PerformanceReview.employee_id.in_(employee_ids))
+    elif user.role not in {"ADMIN", "HR"}:
+        raise HTTPException(403, "Bạn không có quyền xem đánh giá hiệu suất")
+    return list(db.scalars(stmt).all())
 
 
 @router.post("/reviews", response_model=ReviewOut)
-def create_review(payload: ReviewIn, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR", "MANAGER"))):
-    if not db.get(Employee, payload.employee_id):
+def create_review(
+    payload: ReviewIn,
+    db: Session = Depends(get_db),
+    user: UserAccount = Depends(require_roles("ADMIN", "HR", "MANAGER")),
+):
+    employee = db.get(Employee, payload.employee_id)
+    if not employee:
         raise HTTPException(404, "Không tìm thấy nhân viên")
+    ensure_manager_employee_scope(user, employee, db)
     obj = PerformanceReview(**payload.model_dump())
     db.add(obj)
     db.commit()
@@ -74,7 +111,7 @@ def create_review(payload: ReviewIn, db: Session = Depends(get_db), _=Depends(re
 
 
 @router.get("/jobs", response_model=list[JobOut])
-def jobs(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def jobs(db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR"))):
     return list(db.scalars(select(JobPosting).order_by(JobPosting.id.desc())).all())
 
 
@@ -100,7 +137,7 @@ def update_job(job_id: int, payload: JobIn, db: Session = Depends(get_db), _=Dep
 
 
 @router.get("/candidates", response_model=list[CandidateOut])
-def candidates(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def candidates(db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR"))):
     return list(db.scalars(select(Candidate).order_by(Candidate.id.desc())).all())
 
 
