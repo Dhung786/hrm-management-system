@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 
 
 PHONE_RE = re.compile(r"^\d{9,10}$")
-EMPLOYEE_STATUSES = {"ACTIVE", "INACTIVE", "ON_LEAVE"}
+EMPLOYEE_STATUSES = {"ACTIVE", "INACTIVE"}
 ATTENDANCE_STATUSES = {"PRESENT", "LATE", "ABSENT", "REMOTE", "LEAVE"}
 LEAVE_TYPES = {"ANNUAL", "SICK", "UNPAID", "MATERNITY", "OTHER"}
 PAYROLL_STATUSES = {"DRAFT", "APPROVED", "PAID"}
