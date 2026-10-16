@@ -61,8 +61,8 @@ export default function Reviews({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><UsersRound size={20}/></div><div><span>Số đánh giá</span><strong>{items.length}</strong><small>Tổng bản ghi đánh giá</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><Star size={20}/></div><div><span>Điểm trung bình</span><strong>{average}</strong><small>Trên thang điểm 10</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><Award size={20}/></div><div><span>Hiệu suất tốt</span><strong>{highCount}</strong><small>Điểm từ 8 trở lên</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><GaugeCircle size={20}/></div><div><span>Cần cải thiện</span><strong>{lowCount}</strong><small>Điểm dưới 5</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><GaugeCircle size={20}/></div><div><span>Cần cải thiện</span><strong>{lowCount}</strong><small>{lowCount ? 'Có đánh giá dưới 5 điểm cần theo dõi' : 'Không có đánh giá dưới 5 điểm'}</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><Award size={20}/></div><div><span>Hiệu suất tốt</span><strong>{highCount}</strong><small>Điểm từ 8 trở lên</small></div></div>
     </div>
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
