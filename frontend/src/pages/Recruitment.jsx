@@ -35,8 +35,35 @@ export default function Recruitment({ user }) {
     if (jobForm.title.trim().length < 2) return setError('Tên vị trí tuyển dụng phải có ít nhất 2 ký tự')
     if (Number(jobForm.openings) < 1 || Number(jobForm.openings) > 100) return setError('Số lượng tuyển phải từ 1 đến 100')
     try {
-      await request('/api/talent/jobs', { method: 'POST', body: JSON.stringify({ ...jobForm, openings: Number(jobForm.openings), department: jobForm.department || null, description: jobForm.description || null }) })
-      setJobForm(jobBlank); setShowJob(false); setMessage('Đã tạo tin tuyển dụng'); await load()
+      await request('/api/talent/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...jobForm,
+          status: 'OPEN',
+          openings: Number(jobForm.openings),
+          department: jobForm.department || null,
+          description: jobForm.description || null,
+        }),
+      })
+      setJobForm(jobBlank); setShowJob(false); setMessage('Đã tạo tin tuyển dụng ở trạng thái Đang tuyển'); await load()
+    } catch (e) { setError(e.message) }
+  }
+
+  const updateJobStatus = async (job, status) => {
+    setError(''); setMessage('')
+    try {
+      await request(`/api/talent/jobs/${job.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          title: job.title,
+          department: job.department || null,
+          description: job.description || null,
+          openings: Number(job.openings),
+          status,
+        }),
+      })
+      setMessage(`Đã chuyển tin tuyển dụng sang trạng thái ${jobStatusLabel[status]}`)
+      await load()
     } catch (e) { setError(e.message) }
   }
 
@@ -87,7 +114,7 @@ export default function Recruitment({ user }) {
     </div>
 
     <div className="org-grid management-grid">
-      <div className="panel data-panel"><div className="panel-heading"><div><span>VỊ TRÍ TUYỂN</span><h2>Danh sách tin tuyển dụng</h2></div><small>{filteredJobs.length} / {jobs.length} vị trí</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Vị trí</th><th>Phòng ban</th><th>Số lượng</th><th>Trạng thái</th></tr></thead><tbody>{filteredJobs.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.title}</b><br/><small>{x.description || 'Chưa có mô tả'}</small></td><td>{x.department || '-'}</td><td>{x.openings}</td><td><span className={x.status === 'OPEN' ? 'badge' : x.status === 'PAUSED' ? 'badge badge-wait' : 'badge badge-off'}>{jobStatusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div></div>
+      <div className="panel data-panel"><div className="panel-heading"><div><span>VỊ TRÍ TUYỂN</span><h2>Danh sách tin tuyển dụng</h2></div><small>{filteredJobs.length} / {jobs.length} vị trí</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Vị trí</th><th>Phòng ban</th><th>Số lượng</th><th>Trạng thái</th></tr></thead><tbody>{filteredJobs.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.title}</b><br/><small>{x.description || 'Chưa có mô tả'}</small></td><td>{x.department || '-'}</td><td>{x.openings}</td><td><select value={x.status} onChange={e => updateJobStatus(x, e.target.value)}><option value="OPEN">Đang tuyển</option><option value="PAUSED">Tạm dừng</option><option value="CLOSED">Đã đóng</option></select></td></tr>)}</tbody></table></div></div>
       <div className="panel data-panel"><div className="panel-heading"><div><span>ỨNG VIÊN</span><h2>Danh sách ứng viên</h2></div><small>{filteredCandidates.length} / {candidates.length} ứng viên</small></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Họ tên</th><th>Liên hệ</th><th>Vị trí</th><th>Giai đoạn</th></tr></thead><tbody>{filteredCandidates.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.full_name}</b></td><td>{x.email}<br/><small>{x.phone || '-'}</small></td><td>{jobMap[x.job_posting_id] || '-'}</td><td><span className={x.stage === 'HIRED' ? 'badge' : x.stage === 'REJECTED' ? 'badge badge-off' : 'role-chip'}>{stageLabel[x.stage] || x.stage}</span></td></tr>)}</tbody></table></div></div>
     </div>
 
@@ -95,7 +122,7 @@ export default function Recruitment({ user }) {
       <div className="modal-head"><div><span>TIN TUYỂN DỤNG</span><h2>Tạo vị trí tuyển mới</h2></div><button type="button" onClick={() => setShowJob(false)}>✕</button></div>
       <div className="employee-form-table">
         <div className="employee-form-row"><label className="employee-form-cell"><span>Vị trí</span><input maxLength={160} value={jobForm.title} onChange={e => setJobForm({ ...jobForm, title: e.target.value })} required /></label><label className="employee-form-cell"><span>Phòng ban</span><input maxLength={120} value={jobForm.department} onChange={e => setJobForm({ ...jobForm, department: e.target.value })} /></label></div>
-        <div className="employee-form-row"><label className="employee-form-cell"><span>Số lượng</span><input type="number" min="1" max="100" value={jobForm.openings} onChange={e => setJobForm({ ...jobForm, openings: e.target.value })} /></label><label className="employee-form-cell"><span>Trạng thái</span><select value={jobForm.status} onChange={e => setJobForm({ ...jobForm, status: e.target.value })}><option value="OPEN">Đang tuyển</option><option value="PAUSED">Tạm dừng</option><option value="CLOSED">Đã đóng</option></select></label></div>
+        <div className="employee-form-row"><label className="employee-form-cell"><span>Số lượng</span><input type="number" min="1" max="100" value={jobForm.openings} onChange={e => setJobForm({ ...jobForm, openings: e.target.value })} /></label><div className="employee-form-summary"><span>Tin mới mặc định ở trạng thái Đang tuyển. Trạng thái được thay đổi trực tiếp tại danh sách tin tuyển dụng bên dưới.</span></div></div>
         <div className="employee-form-row employee-form-row-wide"><label className="employee-form-cell employee-form-cell-wide"><span>Mô tả</span><textarea maxLength={3000} value={jobForm.description} onChange={e => setJobForm({ ...jobForm, description: e.target.value })} placeholder="Mô tả yêu cầu và nội dung công việc" /></label></div>
       </div>
       <div className="actions employee-form-actions"><button type="button" onClick={() => setShowJob(false)}>Hủy</button><button className="primary">Tạo tin</button></div>
