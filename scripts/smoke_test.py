@@ -66,7 +66,6 @@ def main():
         status, payload = call(endpoint, token=admin_token)
         ok &= check(f"ADMIN GET {endpoint}", status == 200 and isinstance(payload, list), f"HTTP {status}")
 
-    # Logic regression: phone > 10 digits must be rejected before reaching the DB.
     status, _ = call(
         "/api/hr/employees",
         "POST",
@@ -84,7 +83,7 @@ def main():
     role_cases = [
         {
             "label": "Nhân sự", "email": "hr@hr.local", "password": "Hr123456", "role": "HR",
-            "allow": ["/api/hr/employees", "/api/hr/departments", "/api/talent/contracts", "/api/talent/jobs", "/api/talent/candidates"],
+            "allow": ["/api/hr/employees", "/api/hr/departments", "/api/attendance", "/api/leaves", "/api/talent/contracts", "/api/talent/reviews", "/api/talent/jobs", "/api/talent/candidates"],
             "deny": ["/api/payroll", "/api/accounts"],
         },
         {
@@ -94,8 +93,8 @@ def main():
         },
         {
             "label": "Kế toán tiền lương", "email": "payroll@hr.local", "password": "Payroll123", "role": "PAYROLL",
-            "allow": ["/api/hr/employees", "/api/attendance", "/api/leaves", "/api/payroll", "/api/talent/contracts"],
-            "deny": ["/api/talent/reviews", "/api/talent/jobs", "/api/accounts"],
+            "allow": ["/api/hr/employees", "/api/attendance", "/api/payroll", "/api/talent/contracts"],
+            "deny": ["/api/leaves", "/api/talent/reviews", "/api/talent/jobs", "/api/accounts"],
         },
         {
             "label": "Nhân viên", "email": "employee@hr.local", "password": "Employee123", "role": "EMPLOYEE",
