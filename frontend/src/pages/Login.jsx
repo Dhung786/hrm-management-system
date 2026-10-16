@@ -3,7 +3,7 @@ import { request } from '../api'
 import { roleLabel } from '../roles'
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,7 +16,7 @@ export default function Login({ onLogin }) {
     try {
       const data = await request('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: username.trim(), password }),
       })
 
       localStorage.setItem('token', data.access_token)
@@ -36,18 +36,14 @@ export default function Login({ onLogin }) {
 
   return <div className="login-wrap">
     <form className="login-card" onSubmit={submit}>
-      <div className="login-logo">HR</div>
-      <h1>Đăng nhập HRM</h1>
-      <p>Hệ thống quản lý nhân sự và phân quyền theo vai trò.</p>
-
       <label>
-        Email
+        Tên tài khoản
         <input
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
+          type="text"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
           autoComplete="username"
-          placeholder="Nhập email đăng nhập"
+          placeholder="Nhập tên tài khoản"
           required
         />
       </label>
