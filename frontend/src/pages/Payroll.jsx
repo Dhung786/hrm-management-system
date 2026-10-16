@@ -63,7 +63,7 @@ export default function Payroll({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><WalletCards size={20}/></div><div><span>Bảng lương</span><strong>{items.length}</strong><small>Tổng số bảng lương</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><BadgeDollarSign size={20}/></div><div><span>Đã trả</span><strong>{paid}</strong><small>Hoàn tất thanh toán</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><WalletMinimal size={20}/></div><div><span>Đã duyệt</span><strong>{approved}</strong><small>Chờ hoặc sẵn sàng chi trả</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><WalletMinimal size={20}/></div><div><span>Chờ chi trả</span><strong>{approved}</strong><small>{approved ? 'Bảng lương đã duyệt, cần thực hiện thanh toán' : 'Không có bảng lương đang chờ chi trả'}</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><CircleDollarSign size={20}/></div><div><span>Tổng thực nhận</span><strong>{totalNet.toLocaleString('vi-VN')}</strong><small>đồng trong phạm vi hiển thị</small></div></div>
     </div>
 
