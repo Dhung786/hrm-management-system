@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, Plus, RefreshCw, Search, Settings2, UserRoundCheck, UserRoundX, UsersRound } from 'lucide-react'
+import { Eye, EyeOff, Plus, RefreshCw, Search, UserRoundCheck, UserRoundX, UsersRound } from 'lucide-react'
 import { request } from '../api'
 import { ROLE_OPTIONS, roleLabel } from '../roles'
 
@@ -109,7 +109,7 @@ export default function Accounts({ user }) {
   const availableEmployees = employees.filter(emp => !items.some(acc => acc.employee_id === emp.id) && emp.status !== 'INACTIVE')
   const activeCount = items.filter(x => x.is_active).length
   const lockedCount = items.length - activeCount
-  const internalCount = items.filter(x => x.role !== 'ADMIN').length
+  const withoutAccountCount = availableEmployees.length
 
   const filteredItems = useMemo(() => items.filter(x => {
     const keyword = query.trim().toLowerCase()
@@ -128,8 +128,8 @@ export default function Accounts({ user }) {
     <div className="dashboard-stats">
       <div className="dashboard-stat"><div className="stat-icon stat-icon-1"><UsersRound size={20}/></div><div><span>Tổng tài khoản</span><strong>{items.length}</strong><small>Tất cả tài khoản hệ thống</small></div></div>
       <div className="dashboard-stat"><div className="stat-icon stat-icon-2"><UserRoundCheck size={20}/></div><div><span>Đang hoạt động</span><strong>{activeCount}</strong><small>Có thể đăng nhập</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><Settings2 size={20}/></div><div><span>Tài khoản nội bộ</span><strong>{internalCount}</strong><small>4 vai trò nghiệp vụ</small></div></div>
-      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><UserRoundX size={20}/></div><div><span>Đã khóa</span><strong>{lockedCount}</strong><small>Không thể đăng nhập</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-3"><UserRoundX size={20}/></div><div><span>Tài khoản bị khóa</span><strong>{lockedCount}</strong><small>{lockedCount ? 'Cần kiểm tra trạng thái nhân sự/tài khoản' : 'Không có tài khoản bị khóa'}</small></div></div>
+      <div className="dashboard-stat"><div className="stat-icon stat-icon-4"><UsersRound size={20}/></div><div><span>Chưa có tài khoản</span><strong>{withoutAccountCount}</strong><small>Nhân viên đang làm việc chưa được cấp tài khoản</small></div></div>
     </div>
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
