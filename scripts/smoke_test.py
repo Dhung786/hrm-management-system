@@ -35,46 +35,39 @@ def check(name, condition, detail=""):
     return passed
 
 
+def login(email, password):
+    status, data = call("/api/auth/login", "POST", {"email": email, "password": password})
+    token = data.get("access_token") if status == 200 and isinstance(data, dict) else None
+    return status, data, token
+
+
 def main():
     ok = True
 
     status, data = call("/api/health")
     ok &= check("health", status == 200, data)
 
-    status, data = call(
-        "/api/auth/login",
-        "POST",
-        {"email": "admin@hr.local", "password": "Admin@123"},
-    )
-    login_ok = status == 200 and isinstance(data, dict) and bool(data.get("access_token"))
-    ok &= check("login", login_ok, f"HTTP {status}, role={data.get('role') if isinstance(data, dict) else None}")
+    status, data, admin_token = login("admin@hr.local", "Admin@123")
+    login_ok = status == 200 and bool(admin_token)
+    ok &= check("login Quản trị hệ thống", login_ok, f"HTTP {status}, role={data.get('role') if isinstance(data, dict) else None}")
     if not login_ok:
+        print("Gợi ý: chạy 'docker compose exec backend python -m app.seed' để tạo đủ tài khoản demo.")
         sys.exit(1)
 
-    token = data["access_token"]
+    status, me = call("/api/auth/me", token=admin_token)
+    ok &= check("/api/auth/me có tên vai trò tiếng Việt", status == 200 and me.get("role_label") == "Quản trị hệ thống", f"HTTP {status}, role_label={me.get('role_label') if isinstance(me, dict) else None}")
 
-    endpoints = [
-        "/api/hr/employees",
-        "/api/hr/departments",
-        "/api/hr/positions",
-        "/api/attendance",
-        "/api/leaves",
-        "/api/payroll",
-        "/api/talent/contracts",
-        "/api/talent/reviews",
-        "/api/talent/jobs",
-        "/api/talent/candidates",
+    admin_endpoints = [
+        "/api/hr/employees", "/api/hr/departments", "/api/hr/positions", "/api/attendance",
+        "/api/leaves", "/api/payroll", "/api/talent/contracts", "/api/talent/reviews",
+        "/api/talent/jobs", "/api/talent/candidates", "/api/accounts",
     ]
-    for endpoint in endpoints:
-        status, data = call(endpoint, token=token)
-        ok &= check(
-            f"GET {endpoint}",
-            status == 200 and isinstance(data, list),
-            f"HTTP {status}",
-        )
+    for endpoint in admin_endpoints:
+        status, payload = call(endpoint, token=admin_token)
+        ok &= check(f"ADMIN GET {endpoint}", status == 200 and isinstance(payload, list), f"HTTP {status}")
 
     # Logic regression: phone > 10 digits must be rejected before reaching the DB.
-    status, data = call(
+    status, _ = call(
         "/api/hr/employees",
         "POST",
         {
@@ -84,11 +77,54 @@ def main():
             "phone": "09123456789",
             "base_salary": 0,
         },
-        token,
+        admin_token,
     )
     ok &= check("reject phone > 10 digits", status == 422, f"HTTP {status}")
 
-    print("\nSmoke test", "PASSED" if ok else "FAILED")
+    role_cases = [
+        {
+            "label": "Nhân sự", "email": "hr@hr.local", "password": "Hr123456", "role": "HR",
+            "allow": ["/api/hr/employees", "/api/hr/departments", "/api/talent/contracts", "/api/talent/jobs", "/api/talent/candidates"],
+            "deny": ["/api/payroll", "/api/accounts"],
+        },
+        {
+            "label": "Trưởng phòng", "email": "manager@hr.local", "password": "Manager123", "role": "MANAGER",
+            "allow": ["/api/hr/employees", "/api/attendance", "/api/leaves", "/api/talent/contracts", "/api/talent/reviews"],
+            "deny": ["/api/payroll", "/api/talent/jobs", "/api/accounts"],
+        },
+        {
+            "label": "Kế toán tiền lương", "email": "payroll@hr.local", "password": "Payroll123", "role": "PAYROLL",
+            "allow": ["/api/hr/employees", "/api/attendance", "/api/leaves", "/api/payroll", "/api/talent/contracts"],
+            "deny": ["/api/talent/reviews", "/api/talent/jobs", "/api/accounts"],
+        },
+        {
+            "label": "Nhân viên", "email": "employee@hr.local", "password": "Employee123", "role": "EMPLOYEE",
+            "allow": ["/api/hr/employees", "/api/attendance", "/api/leaves", "/api/payroll", "/api/talent/contracts", "/api/talent/reviews"],
+            "deny": ["/api/talent/jobs", "/api/talent/candidates", "/api/accounts"],
+        },
+    ]
+
+    for case in role_cases:
+        status, data, token = login(case["email"], case["password"])
+        role_ok = status == 200 and bool(token) and data.get("role") == case["role"]
+        ok &= check(f"login {case['label']}", role_ok, f"HTTP {status}, role={data.get('role') if isinstance(data, dict) else None}")
+        if not token:
+            continue
+
+        status, me = call("/api/auth/me", token=token)
+        ok &= check(f"role_label {case['label']}", status == 200 and me.get("role_label") == case["label"], f"HTTP {status}")
+
+        for endpoint in case["allow"]:
+            status, payload = call(endpoint, token=token)
+            ok &= check(f"{case['role']} allow {endpoint}", status == 200, f"HTTP {status}")
+            if case["role"] == "EMPLOYEE" and endpoint == "/api/hr/employees" and status == 200:
+                ok &= check("Nhân viên chỉ thấy hồ sơ của mình", isinstance(payload, list) and len(payload) <= 1, f"rows={len(payload) if isinstance(payload, list) else '?'}")
+
+        for endpoint in case["deny"]:
+            status, _ = call(endpoint, token=token)
+            ok &= check(f"{case['role']} deny {endpoint}", status == 403, f"HTTP {status}")
+
+    print("\nSmoke test RBAC", "PASSED" if ok else "FAILED")
     sys.exit(0 if ok else 1)
 
 
