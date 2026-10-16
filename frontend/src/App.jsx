@@ -16,8 +16,6 @@ import Profile from './pages/Profile'
 import System from './pages/System'
 import AccessDenied from './pages/AccessDenied'
 
-// Mỗi vai trò chỉ nhìn thấy đúng nhóm chức năng phục vụ công việc của mình.
-// ADMIN vẫn có toàn quyền để quản trị, kiểm tra và hỗ trợ hệ thống.
 const access = {
   dashboard: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
   employees: ['ADMIN', 'HR', 'MANAGER'],
@@ -73,17 +71,17 @@ export default function App() {
 
   const pages = useMemo(() => ({
     dashboard: <Dashboard user={user} />,
-    employees: <Employees />,
-    organization: <Organization />,
-    attendance: <Attendance />,
-    leaves: <Leaves />,
-    payroll: <Payroll />,
-    contracts: <Contracts />,
-    reviews: <Reviews />,
-    recruitment: <Recruitment />,
-    accounts: <Accounts />,
-    system: <System />,
-    profile: <Profile />,
+    employees: <Employees user={user} />,
+    organization: <Organization user={user} />,
+    attendance: <Attendance user={user} />,
+    leaves: <Leaves user={user} />,
+    payroll: <Payroll user={user} />,
+    contracts: <Contracts user={user} />,
+    reviews: <Reviews user={user} />,
+    recruitment: <Recruitment user={user} />,
+    accounts: <Accounts user={user} />,
+    system: <System user={user} />,
+    profile: <Profile user={user} />,
   }), [user])
 
   if (!logged) return <Login onLogin={me => { setUser(me); setLogged(true) }} />
