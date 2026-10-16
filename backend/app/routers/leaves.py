@@ -24,7 +24,7 @@ def list_leaves(db: Session = Depends(get_db), user: UserAccount = Depends(get_c
         stmt = stmt.where(
             LeaveRequest.employee_id.in_(select(Employee.id).where(Employee.department_id == department_id))
         )
-    elif user.role not in {"ADMIN", "HR", "PAYROLL"}:
+    elif user.role not in {"ADMIN", "HR"}:
         raise HTTPException(403, "Bạn không có quyền xem đơn nghỉ phép")
     return list(db.scalars(stmt).all())
 
