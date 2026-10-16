@@ -5,11 +5,11 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.database import Base, engine
 from app.logging_config import configure_logging, request_logging_middleware
-from app.routers import attendance, auth, dashboard, employees, leaves, payroll, talent
+from app.routers import accounts, attendance, auth, dashboard, employees, leaves, payroll, talent
 
 configure_logging()
 
-app = FastAPI(title="HR Management API", version="1.0.0")
+app = FastAPI(title="HR Management API", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -23,6 +23,7 @@ Base.metadata.create_all(bind=engine)
 
 for router in [
     auth.router,
+    accounts.router,
     dashboard.router,
     employees.router,
     attendance.router,
