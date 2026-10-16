@@ -6,8 +6,8 @@ const now = new Date()
 const blank = { employee_id: '', month: now.getMonth() + 1, year: now.getFullYear(), base_salary: 0, allowance: 0, bonus: 0, deduction: 0, status: 'DRAFT' }
 const statusLabel = { DRAFT: 'Nháp', APPROVED: 'Đã duyệt', PAID: 'Đã trả' }
 
-export default function Payroll() {
-  const role = localStorage.getItem('role')
+export default function Payroll({ user }) {
+  const role = user?.role
   const editable = canManagePayroll(role)
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
@@ -38,16 +38,18 @@ export default function Payroll() {
     } catch (e) { setError(e.message) }
   }
 
-  const empName = id => employees.find(x => x.id === id)?.full_name || `#${id}`
+  const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
+  const paid = items.filter(x => x.status === 'PAID').length
+  const totalNet = items.reduce((sum, x) => sum + Number(x.net_salary || 0), 0)
 
   return <section>
-    <div className="page-title"><div><span>TIỀN LƯƠNG</span><h1>{role === 'EMPLOYEE' ? 'Phiếu lương của tôi' : 'Bảng lương'}</h1><p>{editable ? 'Quản lý lương cơ bản, phụ cấp, thưởng và khấu trừ.' : 'Bạn chỉ được xem bảng lương của chính mình.'}</p></div></div>
+    <div className="page-title"><div><span>TIỀN LƯƠNG</span><h1>{role === 'EMPLOYEE' ? 'Phiếu lương của tôi' : 'Quản lý bảng lương'}</h1><p>{editable ? 'Lập bảng lương, phụ cấp, thưởng, khấu trừ và theo dõi trạng thái chi trả.' : 'Bạn chỉ được xem dữ liệu lương thuộc hồ sơ của chính mình.'}</p></div></div>
+    <div className="mini-stats"><div><span>Số bảng lương</span><b>{items.length}</b></div><div><span>Đã trả</span><b>{paid}</b></div><div><span>Tổng thực nhận</span><b>{totalNet.toLocaleString('vi-VN')} đ</b></div><div><span>Vai trò</span><b>{user?.role_label || '-'}</b></div></div>
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
-    <div className={editable ? 'split' : ''}>
-      {editable && <div className="panel"><h2>Tạo bảng lương</h2><form className="form-grid" onSubmit={save}>
+    <div className={editable ? 'split' : 'work-grid single'}>
+      {editable && <div className="panel form-panel"><div className="panel-heading"><div><span>LẬP LƯƠNG</span><h2>Tạo bảng lương</h2></div></div><form className="form-grid" onSubmit={save}>
         <label>Nhân viên<select value={form.employee_id} onChange={e => { const id = e.target.value; const emp = employees.find(x => x.id === Number(id)); setForm({ ...form, employee_id: id, base_salary: emp?.base_salary || 0 }) }} required><option value="">-- Chọn nhân viên --</option>{employees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select></label>
-        <label>Tháng<input type="number" min="1" max="12" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} required /></label>
-        <label>Năm<input type="number" min="2000" max="2100" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} required /></label>
+        <div className="two-col-form form-grid"><label>Tháng<input type="number" min="1" max="12" value={form.month} onChange={e => setForm({ ...form, month: e.target.value })} required /></label><label>Năm<input type="number" min="2000" max="2100" value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} required /></label></div>
         <label>Lương cơ bản<input type="number" min="0" step="1000" value={form.base_salary} onChange={e => setForm({ ...form, base_salary: e.target.value })} required /></label>
         <label>Phụ cấp<input type="number" min="0" step="1000" value={form.allowance} onChange={e => setForm({ ...form, allowance: e.target.value })} /></label>
         <label>Thưởng<input type="number" min="0" step="1000" value={form.bonus} onChange={e => setForm({ ...form, bonus: e.target.value })} /></label>
@@ -55,7 +57,7 @@ export default function Payroll() {
         <label>Trạng thái<select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option value="DRAFT">Nháp</option><option value="APPROVED">Đã duyệt</option><option value="PAID">Đã trả</option></select></label>
         <button className="primary">Tạo bảng lương</button>
       </form></div>}
-      <div className="panel grow"><div className="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Tháng</th><th>Lương cơ bản</th><th>Phụ cấp</th><th>Thưởng</th><th>Khấu trừ</th><th>Thực nhận</th><th>Trạng thái</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td>{empName(x.employee_id)}</td><td>{x.month}/{x.year}</td>{['base_salary','allowance','bonus','deduction','net_salary'].map(k => <td key={k}>{Number(x[k]).toLocaleString('vi-VN')} đ</td>)}<td><span className={x.status === 'PAID' ? 'badge' : 'badge badge-wait'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div></div>
+      <div className="panel grow data-panel"><div className="panel-heading"><div><span>DANH SÁCH</span><h2>{role === 'EMPLOYEE' ? 'Lịch sử lương' : 'Bảng lương nhân viên'}</h2></div><small>{role === 'EMPLOYEE' ? 'Chỉ dữ liệu của bạn' : 'Dữ liệu thuộc phạm vi được phân quyền'}</small></div><div className="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Tháng</th><th>Lương cơ bản</th><th>Phụ cấp</th><th>Thưởng</th><th>Khấu trừ</th><th>Thực nhận</th><th>Trạng thái</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td><b>{empName(x.employee_id)}</b></td><td>{x.month}/{x.year}</td>{['base_salary','allowance','bonus','deduction','net_salary'].map(k => <td key={k}>{Number(x[k]).toLocaleString('vi-VN')} đ</td>)}<td><span className={x.status === 'PAID' ? 'badge' : 'badge badge-wait'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div></div>
     </div>
   </section>
 }
