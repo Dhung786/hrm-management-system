@@ -3,8 +3,8 @@ import { request } from '../api'
 
 const statusLabel = { PRESENT: 'Có mặt', LATE: 'Đi muộn', ABSENT: 'Vắng', REMOTE: 'Làm từ xa', LEAVE: 'Nghỉ phép' }
 
-export default function Attendance() {
-  const role = localStorage.getItem('role')
+export default function Attendance({ user }) {
+  const role = user?.role
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
   const [error, setError] = useState('')
@@ -27,10 +27,13 @@ export default function Attendance() {
   }
 
   const empName = id => employees.find(x => x.id === id)?.full_name || `#${id}`
+  const title = role === 'EMPLOYEE' ? 'Chấm công của tôi' : role === 'MANAGER' ? 'Chấm công phòng ban' : role === 'PAYROLL' ? 'Đối soát chấm công' : 'Chấm công hằng ngày'
+  const scope = role === 'MANAGER' ? `Nhân viên thuộc ${user?.department_name || 'phòng ban của bạn'}` : role === 'EMPLOYEE' ? 'Chỉ dữ liệu cá nhân' : role === 'PAYROLL' ? 'Dữ liệu phục vụ tính lương' : 'Phạm vi theo quyền tài khoản'
 
   return <section>
-    <div className="page-title"><div><span>CHẤM CÔNG</span><h1>{role === 'EMPLOYEE' ? 'Chấm công của tôi' : role === 'MANAGER' ? 'Chấm công phòng ban' : 'Chấm công hằng ngày'}</h1><p>Check-in/check-out cá nhân và theo dõi dữ liệu theo phạm vi vai trò.</p></div><div className="actions"><button onClick={() => act('/api/attendance/check-in')}>Check-in</button><button className="primary" onClick={() => act('/api/attendance/check-out')}>Check-out</button></div></div>
+    <div className="page-title page-title-modern"><div><span>CHẤM CÔNG</span><h1>{title}</h1><p>Theo dõi giờ vào, giờ ra và trạng thái làm việc.</p></div>{user?.employee_id && <div className="actions"><button onClick={() => act('/api/attendance/check-in')}>Check-in</button><button className="primary" onClick={() => act('/api/attendance/check-out')}>Check-out</button></div>}</div>
+    <div className="role-view-banner"><div><h3>{user?.role_label}</h3><p>{scope}</p></div><span className="role-pill">{items.length} bản ghi</span></div>
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
-    <div className="panel"><div className="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Ngày</th><th>Giờ vào</th><th>Giờ ra</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td>{empName(x.employee_id)}</td><td>{x.work_date}</td><td>{x.check_in ? new Date(x.check_in).toLocaleTimeString('vi-VN') : '-'}</td><td>{x.check_out ? new Date(x.check_out).toLocaleTimeString('vi-VN') : '-'}</td><td><span className="badge">{statusLabel[x.status] || x.status}</span></td><td>{x.note || '-'}</td></tr>)}</tbody></table></div></div>
+    <div className="panel data-panel"><div className="panel-heading"><div><span>LỊCH SỬ</span><h2>Dữ liệu chấm công</h2></div><small>Danh sách được giới hạn theo vai trò đăng nhập</small></div><div className="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Ngày</th><th>Giờ vào</th><th>Giờ ra</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td><b>{empName(x.employee_id)}</b></td><td>{x.work_date}</td><td>{x.check_in ? new Date(x.check_in).toLocaleTimeString('vi-VN') : '-'}</td><td>{x.check_out ? new Date(x.check_out).toLocaleTimeString('vi-VN') : '-'}</td><td><span className={x.status === 'LATE' ? 'badge badge-wait' : x.status === 'ABSENT' ? 'badge badge-off' : 'badge'}>{statusLabel[x.status] || x.status}</span></td><td>{x.note || '-'}</td></tr>)}</tbody></table></div></div>
   </section>
 }
