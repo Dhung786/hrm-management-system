@@ -23,7 +23,7 @@ const access = {
   attendance: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
   leaves: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'],
   payroll: ['ADMIN', 'PAYROLL', 'EMPLOYEE'],
-  contracts: ['ADMIN', 'HR', 'PAYROLL', 'EMPLOYEE'],
+  contracts: ['ADMIN', 'HR', 'MANAGER', 'PAYROLL', 'EMPLOYEE'],
   reviews: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'],
   recruitment: ['ADMIN', 'HR'],
   accounts: ['ADMIN'],
