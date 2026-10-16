@@ -70,7 +70,7 @@ export default function App() {
   }
 
   const pages = useMemo(() => ({
-    dashboard: <Dashboard user={user} />,
+    dashboard: <Dashboard user={user} onNavigate={navigate} />,
     employees: <Employees user={user} />,
     organization: <Organization user={user} />,
     attendance: <Attendance user={user} />,
@@ -97,7 +97,7 @@ export default function App() {
   } else if (forbidden) {
     content = <AccessDenied user={user} page={page} onHome={() => navigate(DEFAULT_PAGE)} />
   } else {
-    content = pages[page] || <Dashboard user={user} />
+    content = pages[page] || <Dashboard user={user} onNavigate={navigate} />
   }
 
   const logout = () => {
