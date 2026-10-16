@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_roles
+from app.dependencies import ensure_manager_employee_scope, get_current_user, manager_department_id, require_roles
 from app.models import Employee, LeaveRequest, UserAccount
 from app.schemas import LeaveDecision, LeaveIn, LeaveOut
 
@@ -17,6 +17,15 @@ def list_leaves(db: Session = Depends(get_db), user: UserAccount = Depends(get_c
         if not user.employee_id:
             return []
         stmt = stmt.where(LeaveRequest.employee_id == user.employee_id)
+    elif user.role == "MANAGER":
+        department_id = manager_department_id(user, db)
+        if not department_id:
+            return []
+        stmt = stmt.where(
+            LeaveRequest.employee_id.in_(select(Employee.id).where(Employee.department_id == department_id))
+        )
+    elif user.role not in {"ADMIN", "HR", "PAYROLL"}:
+        raise HTTPException(403, "Bạn không có quyền xem đơn nghỉ phép")
     return list(db.scalars(stmt).all())
 
 
@@ -27,8 +36,8 @@ def create_leave(payload: LeaveIn, db: Session = Depends(get_db), user: UserAcco
         raise HTTPException(404, "Không tìm thấy nhân viên")
     if employee.status == "INACTIVE":
         raise HTTPException(400, "Không thể tạo đơn nghỉ cho nhân viên đã nghỉ việc")
-    if user.role == "EMPLOYEE" and user.employee_id != payload.employee_id:
-        raise HTTPException(403, "Chỉ được tạo đơn nghỉ cho chính mình")
+    if user.role not in {"ADMIN", "HR"} and user.employee_id != payload.employee_id:
+        raise HTTPException(403, "Bạn chỉ được tạo đơn nghỉ cho chính mình")
 
     overlap = db.scalar(
         select(LeaveRequest).where(
@@ -48,10 +57,19 @@ def create_leave(payload: LeaveIn, db: Session = Depends(get_db), user: UserAcco
 
 
 @router.patch("/{leave_id}/decision", response_model=LeaveOut)
-def decide(leave_id: int, payload: LeaveDecision, db: Session = Depends(get_db), _=Depends(require_roles("ADMIN", "HR", "MANAGER"))):
+def decide(
+    leave_id: int,
+    payload: LeaveDecision,
+    db: Session = Depends(get_db),
+    user: UserAccount = Depends(require_roles("ADMIN", "HR", "MANAGER")),
+):
     obj = db.get(LeaveRequest, leave_id)
     if not obj:
         raise HTTPException(404, "Không tìm thấy đơn nghỉ")
+    employee = db.get(Employee, obj.employee_id)
+    if not employee:
+        raise HTTPException(404, "Không tìm thấy nhân viên của đơn nghỉ")
+    ensure_manager_employee_scope(user, employee, db)
     if obj.status != "PENDING":
         raise HTTPException(409, "Đơn nghỉ này đã được xử lý")
     obj.status = payload.status
