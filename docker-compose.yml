@@ -5,17 +5,22 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hr_management}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe_Db_123!}
-    ports:
-      - "127.0.0.1:5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-hrm_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      HRM_APP_USER: ${HRM_APP_USER:-hrm_app}
+      HRM_APP_PASSWORD: ${HRM_APP_PASSWORD:?Set HRM_APP_PASSWORD in .env}
+      POSTGRES_EXPORTER_USER: ${POSTGRES_EXPORTER_USER:-hrm_metrics}
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:?Set POSTGRES_EXPORTER_PASSWORD in .env}
     volumes:
       - hrms_pgdata:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-app-users.sh:/docker-entrypoint-initdb.d/10-init-app-users.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hr_management}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hrm_admin} -d ${POSTGRES_DB:-hr_management}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 15
+    networks:
+      - data_net
 
   pgadmin:
     image: dpage/pgadmin4:8.13
@@ -23,7 +28,7 @@ services:
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@hrm.local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-ChangeMe_PgAdmin_123!}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     depends_on:
@@ -33,6 +38,11 @@ services:
       - "127.0.0.1:5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - data_net
+      - management_net
+    security_opt:
+      - no-new-privileges:true
 
   backend:
     build: ./backend
@@ -44,6 +54,17 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - app_net
+      - data_net
+      - observability_net
 
   frontend:
     build:
@@ -56,6 +77,17 @@ services:
       - backend
     expose:
       - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+      - /var/cache/nginx:size=32m,noexec,nosuid
+      - /var/run:size=4m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge_net
 
   nginx:
     image: nginxinc/nginx-unprivileged:1.27-alpine
@@ -68,6 +100,17 @@ services:
       - "8080:8080"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge_net
+      - app_net
+      - observability_net
 
   nginx-exporter:
     image: nginx/nginx-prometheus-exporter:1.3.0
@@ -79,26 +122,37 @@ services:
       - nginx
     expose:
       - "9113"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - observability_net
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: hrms-postgres-exporter
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ChangeMe_Db_123!}@db:5432/${POSTGRES_DB:-hr_management}?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_EXPORTER_USER:-hrm_metrics}:${POSTGRES_EXPORTER_PASSWORD:?Set POSTGRES_EXPORTER_PASSWORD in .env}@db:5432/${POSTGRES_DB:-hr_management}?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
     expose:
       - "9187"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data_net
+      - observability_net
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: hrms-cadvisor
     restart: unless-stopped
     privileged: true
-    devices:
-      - /dev/kmsg:/dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -106,6 +160,8 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     expose:
       - "8080"
+    networks:
+      - observability_net
 
   prometheus:
     image: prom/prometheus:v2.55.1
@@ -114,6 +170,7 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -124,6 +181,13 @@ services:
       - nginx-exporter
       - postgres-exporter
       - cadvisor
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - observability_net
+      - management_net
 
   loki:
     image: grafana/loki:3.2.1
@@ -135,6 +199,12 @@ services:
       - loki_data:/loki
     expose:
       - "3100"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - observability_net
 
   promtail:
     image: grafana/promtail:3.2.1
@@ -147,6 +217,12 @@ services:
       - promtail_positions:/tmp
     depends_on:
       - loki
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - observability_net
 
   grafana:
     image: grafana/grafana:11.3.0
@@ -154,8 +230,11 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-ChangeMe_Grafana_123!}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
       GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -165,6 +244,23 @@ services:
     depends_on:
       - prometheus
       - loki
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - observability_net
+      - management_net
+
+networks:
+  edge_net:
+  management_net:
+  app_net:
+    internal: true
+  data_net:
+    internal: true
+  observability_net:
+    internal: true
 
 volumes:
   hrms_pgdata:
