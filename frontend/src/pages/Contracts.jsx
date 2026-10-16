@@ -34,8 +34,33 @@ export default function Contracts({ user }) {
     if (form.end_date && form.end_date < form.start_date) return setError('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu')
     if (Number(form.salary) < 0) return setError('Mức lương không được âm')
     try {
-      await request('/api/talent/contracts', { method: 'POST', body: JSON.stringify({ ...form, employee_id: Number(form.employee_id), salary: Number(form.salary), end_date: form.end_date || null }) })
+      const payload = {
+        ...form,
+        employee_id: Number(form.employee_id),
+        salary: Number(form.salary),
+        end_date: form.end_date || null,
+        status: 'ACTIVE',
+      }
+      await request('/api/talent/contracts', { method: 'POST', body: JSON.stringify(payload) })
       setForm(blank); setShowCreate(false); setMessage('Tạo hợp đồng thành công'); await load()
+    } catch (e) { setError(e.message) }
+  }
+
+  const changeStatus = async (contract, status) => {
+    setError(''); setMessage('')
+    try {
+      const payload = {
+        employee_id: contract.employee_id,
+        contract_no: contract.contract_no,
+        contract_type: contract.contract_type,
+        start_date: contract.start_date,
+        end_date: contract.end_date || null,
+        salary: Number(contract.salary),
+        status,
+      }
+      await request(`/api/talent/contracts/${contract.id}`, { method: 'PUT', body: JSON.stringify(payload) })
+      setMessage(`Đã chuyển hợp đồng ${contract.contract_no} sang trạng thái ${statusLabel[status]}`)
+      await load()
     } catch (e) { setError(e.message) }
   }
 
@@ -65,15 +90,23 @@ export default function Contracts({ user }) {
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
-    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm số hợp đồng hoặc nhân viên..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="ALL">Tất cả loại hợp đồng</option>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Số hợp đồng</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Mức lương</th><th>Trạng thái</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td><span className="role-chip">{typeLabel[x.contract_type] || x.contract_type}</span></td><td>{x.start_date}<br/><small>đến {x.end_date || 'Không thời hạn'}</small></td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td><span className={x.status === 'ACTIVE' ? 'badge' : x.status === 'EXPIRED' ? 'badge badge-wait' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span></td></tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} hợp đồng</div></div>
+    <div className="panel data-panel management-list-panel">
+      <div className="filter-bar">
+        <label className="search-box"><Search size={17}/><input placeholder="Tìm số hợp đồng hoặc nhân viên..." value={query} onChange={e => setQuery(e.target.value)} /></label>
+        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="ALL">Tất cả loại hợp đồng</option>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Số hợp đồng</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Mức lương</th><th>Trạng thái</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td><span className="role-chip">{typeLabel[x.contract_type] || x.contract_type}</span></td><td>{x.start_date}<br/><small>đến {x.end_date || 'Không thời hạn'}</small></td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td>{editable ? <select value={x.status} onChange={e => changeStatus(x, e.target.value)} className="inline-status-select"><option value="ACTIVE">Đang hiệu lực</option><option value="EXPIRED">Hết hạn</option><option value="TERMINATED">Đã chấm dứt</option></select> : <span className={x.status === 'ACTIVE' ? 'badge' : x.status === 'EXPIRED' ? 'badge badge-wait' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span>}</td></tr>)}</tbody></table></div>
+      <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} hợp đồng</div>
+    </div>
 
     {showCreate && editable && <div className="modal-backdrop"><form className="modal-card employee-compact-modal" onSubmit={save}>
       <div className="modal-head"><div><span>HỢP ĐỒNG</span><h2>Tạo hợp đồng mới</h2></div><button type="button" onClick={() => setShowCreate(false)}>✕</button></div>
       <div className="employee-form-table">
         <div className="employee-form-row"><label className="employee-form-cell"><span>Nhân viên</span><select value={form.employee_id} onChange={e => { const id = e.target.value; const emp = employees.find(x => x.id === Number(id)); setForm({ ...form, employee_id: id, salary: emp?.base_salary || 0 }) }} required><option value="">-- Chọn nhân viên --</option>{employees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select></label><label className="employee-form-cell"><span>Số hợp đồng</span><input maxLength={60} value={form.contract_no} onChange={e => setForm({ ...form, contract_no: e.target.value.toUpperCase() })} required /></label></div>
-        <div className="employee-form-row"><label className="employee-form-cell"><span>Loại hợp đồng</span><select value={form.contract_type} onChange={e => setForm({ ...form, contract_type: e.target.value })}>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="employee-form-cell"><span>Trạng thái</span><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
+        <div className="employee-form-row"><label className="employee-form-cell"><span>Loại hợp đồng</span><select value={form.contract_type} onChange={e => setForm({ ...form, contract_type: e.target.value })}>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="employee-form-cell"><span>Mức lương</span><input type="number" min="0" step="1000" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} /></label></div>
         <div className="employee-form-row"><label className="employee-form-cell"><span>Ngày bắt đầu</span><input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} required /></label><label className="employee-form-cell"><span>Ngày kết thúc</span><input type="date" min={form.start_date || undefined} value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} /></label></div>
-        <div className="employee-form-row employee-form-row-last"><label className="employee-form-cell"><span>Mức lương</span><input type="number" min="0" step="1000" value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} /></label><div className="employee-form-summary"><span>Để trống ngày kết thúc nếu hợp đồng không xác định thời hạn.</span></div></div>
+        <div className="employee-form-row employee-form-row-last"><div className="employee-form-summary"><span>Hợp đồng mới luôn được tạo ở trạng thái Đang hiệu lực. Sau khi tạo, trạng thái được cập nhật trực tiếp ở danh sách bên dưới. Để trống ngày kết thúc nếu hợp đồng không xác định thời hạn.</span></div></div>
       </div>
       <div className="actions employee-form-actions"><button type="button" onClick={() => setShowCreate(false)}>Hủy</button><button className="primary">Lưu hợp đồng</button></div>
     </form></div>}
