@@ -4,7 +4,10 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.config import settings
 from app.database import Base, engine
+from app.logging_config import configure_logging, request_logging_middleware
 from app.routers import attendance, auth, dashboard, employees, leaves, payroll, talent
+
+configure_logging()
 
 app = FastAPI(title="HR Management API", version="1.0.0")
 app.add_middleware(
@@ -14,6 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.middleware("http")(request_logging_middleware)
 
 Base.metadata.create_all(bind=engine)
 
