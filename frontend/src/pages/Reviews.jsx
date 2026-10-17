@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Award, GaugeCircle, Plus, Search, Star, UsersRound } from 'lucide-react'
+import { Award, GaugeCircle, Plus, Search, Star, Trash2, UsersRound } from 'lucide-react'
 import { request } from '../api'
 import { canManageReviews } from '../roles'
 
@@ -8,6 +8,7 @@ const blank = { employee_id: '', period: '', score: 8, strengths: '', improvemen
 export default function Reviews({ user }) {
   const role = user?.role
   const editable = canManageReviews(role)
+  const canDelete = role === 'ADMIN'
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
   const [form, setForm] = useState(blank)
@@ -39,6 +40,16 @@ export default function Reviews({ user }) {
     } catch (e) { setError(e.message) }
   }
 
+  const removeReview = async (x) => {
+    if (!confirm(`Xóa đánh giá của ${empName(x.employee_id)} trong kỳ ${x.period}?\n\nThao tác này không thể hoàn tác.`)) return
+    setError(''); setMessage('')
+    try {
+      await request(`/api/talent/reviews/${x.id}`, { method: 'DELETE' })
+      setMessage('Đã xóa đánh giá hiệu suất')
+      await load()
+    } catch (e) { setError(e.message) }
+  }
+
   const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
   const periods = useMemo(() => [...new Set(items.map(x => x.period).filter(Boolean))], [items])
   const filteredItems = useMemo(() => items.filter(x => {
@@ -67,7 +78,7 @@ export default function Reviews({ user }) {
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
-    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên, người đánh giá, nội dung..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={periodFilter} onChange={e => setPeriodFilter(e.target.value)}><option value="ALL">Tất cả kỳ đánh giá</option>{periods.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)}><option value="ALL">Tất cả mức điểm</option><option value="HIGH">Tốt (8-10)</option><option value="MID">Trung bình (5-7.9)</option><option value="LOW">Cần cải thiện (&lt;5)</option></select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Kỳ</th><th>Điểm</th><th>Điểm mạnh</th><th>Cần cải thiện</th><th>Người đánh giá</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.period}</td><td><span className={Number(x.score) >= 8 ? 'badge' : Number(x.score) < 5 ? 'badge badge-off' : 'badge badge-wait'}>{x.score}/10</span></td><td>{x.strengths || '-'}</td><td>{x.improvements || '-'}</td><td>{x.reviewer || '-'}</td></tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} đánh giá</div></div>
+    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên, người đánh giá, nội dung..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={periodFilter} onChange={e => setPeriodFilter(e.target.value)}><option value="ALL">Tất cả kỳ đánh giá</option>{periods.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)}><option value="ALL">Tất cả mức điểm</option><option value="HIGH">Tốt (8-10)</option><option value="MID">Trung bình (5-7.9)</option><option value="LOW">Cần cải thiện (&lt;5)</option></select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Kỳ</th><th>Điểm</th><th>Điểm mạnh</th><th>Cần cải thiện</th><th>Người đánh giá</th>{canDelete && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.period}</td><td><span className={Number(x.score) >= 8 ? 'badge' : Number(x.score) < 5 ? 'badge badge-off' : 'badge badge-wait'}>{x.score}/10</span></td><td>{x.strengths || '-'}</td><td>{x.improvements || '-'}</td><td>{x.reviewer || '-'}</td>{canDelete && <td><button className="danger" onClick={() => removeReview(x)}><Trash2 size={14}/> Xóa</button></td>}</tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} đánh giá</div></div>
 
     {showCreate && editable && <div className="modal-backdrop"><form className="modal-card employee-compact-modal" onSubmit={create}>
       <div className="modal-head"><div><span>ĐÁNH GIÁ</span><h2>Tạo đánh giá hiệu suất</h2></div><button type="button" onClick={() => setShowCreate(false)}>✕</button></div>
