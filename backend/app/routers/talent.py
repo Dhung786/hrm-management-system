@@ -76,6 +76,20 @@ def update_contract(contract_id: int, payload: ContractIn, db: Session = Depends
     return obj
 
 
+@router.delete("/contracts/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_contract(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_roles("ADMIN")),
+):
+    obj = db.get(Contract, contract_id)
+    if not obj:
+        raise HTTPException(404, "Không tìm thấy hợp đồng")
+    db.delete(obj)
+    db.commit()
+    return None
+
+
 @router.get("/reviews", response_model=list[ReviewOut])
 def reviews(db: Session = Depends(get_db), user: UserAccount = Depends(get_current_user)):
     stmt = select(PerformanceReview).order_by(PerformanceReview.id.desc())
