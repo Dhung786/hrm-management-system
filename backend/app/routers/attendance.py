@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -102,3 +102,17 @@ def check_out(user: UserAccount = Depends(get_current_user), db: Session = Depen
     obj.check_out = now
     db.commit()
     return {"message": "Check-out thành công", "check_out": obj.check_out.isoformat()}
+
+
+@router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_attendance(
+    attendance_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_roles("ADMIN")),
+):
+    obj = db.get(Attendance, attendance_id)
+    if not obj:
+        raise HTTPException(404, "Không tìm thấy bản ghi chấm công")
+    db.delete(obj)
+    db.commit()
+    return None
