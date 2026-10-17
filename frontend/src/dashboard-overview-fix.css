@@ -1,0 +1,46 @@
+/* Compact spacing fix for the overview bar chart only. */
+.overview-bar-chart{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,160px));
+  justify-content:center;
+  align-items:end;
+  column-gap:22px;
+  row-gap:0;
+  padding-left:18px;
+  padding-right:18px;
+}
+
+.overview-bar-item{
+  width:100%;
+  min-width:0;
+  flex:none;
+}
+
+.overview-bar-track{
+  width:100%;
+}
+
+.overview-bar-fill{
+  width:54px;
+  max-width:54px;
+}
+
+.overview-bar-label{
+  max-width:150px;
+  margin:0 auto;
+}
+
+@media(max-width:760px){
+  .overview-bar-chart{
+    display:flex;
+    justify-content:flex-start;
+    gap:16px;
+    overflow-x:auto;
+    padding-left:16px;
+    padding-right:16px;
+  }
+  .overview-bar-item{
+    flex:0 0 120px;
+    width:120px;
+  }
+}
