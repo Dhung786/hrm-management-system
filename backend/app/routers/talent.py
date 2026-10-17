@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -108,6 +108,20 @@ def create_review(
     db.commit()
     db.refresh(obj)
     return obj
+
+
+@router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_roles("ADMIN")),
+):
+    obj = db.get(PerformanceReview, review_id)
+    if not obj:
+        raise HTTPException(404, "Không tìm thấy đánh giá")
+    db.delete(obj)
+    db.commit()
+    return None
 
 
 @router.get("/jobs", response_model=list[JobOut])
