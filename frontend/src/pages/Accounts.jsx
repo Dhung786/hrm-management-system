@@ -6,6 +6,13 @@ import { ROLE_OPTIONS, roleLabel } from '../roles'
 const INTERNAL_ROLE_OPTIONS = ROLE_OPTIONS.filter(x => x.value !== 'ADMIN')
 const blank = { employee_id: '', email: '', password: '', role: 'EMPLOYEE', is_active: true }
 
+function usernameFromStored(value) {
+  const login = String(value || '').trim()
+  if (!login) return ''
+  if (login.toLowerCase().endsWith('@hr.local')) return login.slice(0, -9)
+  return login.includes('@') ? login.split('@')[0] : login
+}
+
 function generateTemporaryPassword() {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
   const digits = '23456789'
@@ -81,16 +88,16 @@ export default function Accounts({ user }) {
   const create = async (e) => {
     e.preventDefault(); setError(''); setMessage('')
     if (!form.employee_id) return setError('Vui lòng chọn nhân viên trước khi tạo tài khoản')
-    if (!form.email) return setError('Nhân viên chưa có email. Hãy cập nhật email trong hồ sơ nhân viên trước.')
+    if (!form.email) return setError('Nhân viên chưa có tên đăng nhập. Hãy cập nhật hồ sơ nhân viên trước.')
     if (form.password.length !== 8 || !/[A-Za-zÀ-ỹ]/.test(form.password) || !/\d/.test(form.password)) return setError('Mật khẩu tạm phải có đúng 8 ký tự, gồm chữ và số')
     try {
       await request('/api/accounts', {
         method: 'POST',
         body: JSON.stringify({ ...form, employee_id: Number(form.employee_id) }),
       })
-      const accountEmail = form.email
+      const accountUsername = usernameFromStored(form.email)
       closeCreate()
-      setMessage(`Đã tạo tài khoản ${accountEmail}. Mật khẩu tạm chỉ dùng để bàn giao cho nhân viên.`)
+      setMessage(`Đã tạo tài khoản ${accountUsername}. Mật khẩu tạm chỉ dùng để bàn giao cho nhân viên.`)
       await load()
     } catch (e) { setError(e.message) }
   }
@@ -113,7 +120,8 @@ export default function Accounts({ user }) {
 
   const filteredItems = useMemo(() => items.filter(x => {
     const keyword = query.trim().toLowerCase()
-    const matchesQuery = !keyword || [x.email, x.employee_name, x.employee_code, x.role_label, roleLabel(x.role)].some(v => String(v || '').toLowerCase().includes(keyword))
+    const username = usernameFromStored(x.email)
+    const matchesQuery = !keyword || [username, x.employee_name, x.employee_code, x.role_label, roleLabel(x.role)].some(v => String(v || '').toLowerCase().includes(keyword))
     const matchesRole = roleFilter === 'ALL' || x.role === roleFilter
     const matchesStatus = statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? x.is_active : !x.is_active)
     return matchesQuery && matchesRole && matchesStatus
@@ -136,22 +144,22 @@ export default function Accounts({ user }) {
 
     <div className="panel data-panel account-list-panel">
       <div className="filter-bar">
-        <label className="search-box"><Search size={17}/><input placeholder="Tìm theo nhân viên, email, mã..." value={query} onChange={e => setQuery(e.target.value)} /></label>
+        <label className="search-box"><Search size={17}/><input placeholder="Tìm theo nhân viên, tên đăng nhập, mã..." value={query} onChange={e => setQuery(e.target.value)} /></label>
         <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}><option value="ALL">Tất cả vai trò</option>{ROLE_OPTIONS.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}</select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="LOCKED">Đã khóa</option></select>
       </div>
-      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{filteredItems.map((x, index) => <tr key={x.id}><td>{index + 1}</td><td><div className="person-cell"><div className="person-avatar">{(x.employee_name || x.email).charAt(0).toUpperCase()}</div><div><b>{x.employee_name || 'Chưa liên kết nhân viên'}</b><small>{x.employee_code || '-'}</small></div></div></td><td><b>{x.email}</b></td><td><span className="role-chip">{x.role_label || roleLabel(x.role)}</span></td><td><span className={x.is_active ? 'badge' : 'badge badge-off'}>{x.is_active ? 'Đang hoạt động' : 'Đã khóa'}</span></td><td><button onClick={() => { setEditing({ ...x, password: '' }); setShowEditPassword(false) }}>Quản lý</button></td></tr>)}</tbody></table></div>
+      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{filteredItems.map((x, index) => <tr key={x.id}><td>{index + 1}</td><td><div className="person-cell"><div className="person-avatar">{(x.employee_name || usernameFromStored(x.email) || 'N').charAt(0).toUpperCase()}</div><div><b>{x.employee_name || 'Chưa liên kết nhân viên'}</b><small>{x.employee_code || '-'}</small></div></div></td><td><b>{usernameFromStored(x.email)}</b></td><td><span className="role-chip">{x.role_label || roleLabel(x.role)}</span></td><td><span className={x.is_active ? 'badge' : 'badge badge-off'}>{x.is_active ? 'Đang hoạt động' : 'Đã khóa'}</span></td><td><button onClick={() => { setEditing({ ...x, password: '' }); setShowEditPassword(false) }}>Quản lý</button></td></tr>)}</tbody></table></div>
       <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} tài khoản</div>
     </div>
 
     {showCreate && <div className="modal-backdrop"><form className="modal-card account-modal" onSubmit={create}>
       <div className="modal-head"><div><span>TẠO TÀI KHOẢN</span><h2>Thêm tài khoản nhân sự</h2></div><button type="button" onClick={closeCreate}>✕</button></div>
 
-      <label>1. Chọn nhân viên<select value={form.employee_id} onChange={e => selectEmployee(e.target.value)} required><option value="">-- Chọn nhân viên --</option>{availableEmployees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select><small className="hint">Chọn nhân viên trước. Email và mật khẩu tạm sẽ xuất hiện sau khi chọn.</small></label>
+      <label>1. Chọn nhân viên<select value={form.employee_id} onChange={e => selectEmployee(e.target.value)} required><option value="">-- Chọn nhân viên --</option>{availableEmployees.map(x => <option key={x.id} value={x.id}>{x.employee_code} - {x.full_name}</option>)}</select><small className="hint">Chọn nhân viên trước. Tên đăng nhập và mật khẩu tạm sẽ xuất hiện sau khi chọn.</small></label>
 
       {form.employee_id && <>
         <div className="account-generated-fields">
-          <label>Tên đăng nhập / Email<input type="email" value={form.email} readOnly /><small className="hint">Lấy tự động từ hồ sơ nhân viên.</small></label>
+          <label>Tên đăng nhập<input type="text" value={usernameFromStored(form.email)} readOnly /><small className="hint">Lấy tự động từ hồ sơ nhân viên.</small></label>
 
           <label>Mật khẩu tạm
             <div className="password-field-wrap">
@@ -169,7 +177,7 @@ export default function Accounts({ user }) {
       <div className="actions"><button type="button" onClick={closeCreate}>Hủy</button><button className="primary" disabled={!form.employee_id}>Tạo tài khoản</button></div>
     </form></div>}
 
-    {editing && <div className="modal-backdrop"><form className="modal-card" onSubmit={saveEdit}><div className="modal-head"><div><span>QUẢN LÝ TÀI KHOẢN</span><h2>{editing.employee_name || editing.email}</h2></div><button type="button" onClick={() => { setEditing(null); setShowEditPassword(false) }}>✕</button></div>
+    {editing && <div className="modal-backdrop"><form className="modal-card" onSubmit={saveEdit}><div className="modal-head"><div><span>QUẢN LÝ TÀI KHOẢN</span><h2>{editing.employee_name || usernameFromStored(editing.email)}</h2></div><button type="button" onClick={() => { setEditing(null); setShowEditPassword(false) }}>✕</button></div>
       <label>Vai trò<select value={editing.role} onChange={e => setEditing({ ...editing, role: e.target.value })}>{editing.role === 'ADMIN' && <option value="ADMIN">Quản trị hệ thống</option>}{INTERNAL_ROLE_OPTIONS.map(x => <option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
       <label className="check-line"><input type="checkbox" checked={editing.is_active} onChange={e => setEditing({ ...editing, is_active: e.target.checked })} /> Tài khoản đang hoạt động</label>
       <label>Đặt lại mật khẩu (không bắt buộc)<div className="password-field-wrap"><input type={showEditPassword ? 'text' : 'password'} minLength="8" value={editing.password} onChange={e => setEditing({ ...editing, password: e.target.value })} placeholder="Để trống nếu không đổi" /><button type="button" className="password-eye-button" onClick={() => setShowEditPassword(value => !value)} aria-label={showEditPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>{showEditPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div></label>
