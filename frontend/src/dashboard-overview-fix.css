@@ -2,14 +2,14 @@
 .overview-chart-panel{
   min-height:270px;
   width:min(100%,650px);
-  justify-self:end;
+  justify-self:start;
 }
 
 .overview-bar-chart{
   height:202px;
   display:grid;
   grid-template-columns:repeat(4,108px);
-  justify-content:end;
+  justify-content:center;
   align-items:end;
   column-gap:12px;
   row-gap:0;
@@ -55,8 +55,8 @@
 
 @media(min-width:1251px){
   .overview-main-grid{
-    grid-template-columns:minmax(650px,1fr) minmax(330px,390px);
-    justify-content:end;
+    grid-template-columns:minmax(0,650px) minmax(330px,390px);
+    justify-content:space-between;
   }
 }
 
