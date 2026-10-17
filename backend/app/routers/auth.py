@@ -35,6 +35,7 @@ def me(user: UserAccount = Depends(get_current_user)):
         employee_id=user.employee_id,
         employee_code=employee.employee_code if employee else None,
         full_name=employee.full_name if employee else None,
+        gender=employee.gender if employee else None,
         department_id=employee.department_id if employee else None,
         department_name=department.name if department else None,
         position_name=position.name if position else None,
