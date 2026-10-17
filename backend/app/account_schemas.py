@@ -16,6 +16,7 @@ class CurrentUserOut(BaseModel):
     employee_id: int | None = None
     employee_code: str | None = None
     full_name: str | None = None
+    gender: str | None = None
     department_id: int | None = None
     department_name: str | None = None
     position_name: str | None = None
