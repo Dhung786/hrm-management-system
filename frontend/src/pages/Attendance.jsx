@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Clock3, LogIn, LogOut, Search } from 'lucide-react'
+import { CheckCircle2, Clock3, LogIn, LogOut, Search, Trash2 } from 'lucide-react'
 import { request } from '../api'
 
 const statusLabel = { PRESENT: 'Có mặt', ABSENT: 'Vắng', REMOTE: 'Làm từ xa', LEAVE: 'Nghỉ phép' }
 
 export default function Attendance({ user }) {
   const role = user?.role
+  const canDelete = role === 'ADMIN'
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
   const [query, setQuery] = useState('')
@@ -27,6 +28,16 @@ export default function Attendance({ user }) {
     try {
       const data = await request(path, { method: 'POST' })
       setMessage(data.message || 'Thao tác thành công'); await load()
+    } catch (e) { setError(e.message) }
+  }
+
+  const removeAttendance = async (x) => {
+    if (!confirm(`Xóa bản ghi chấm công của ${empName(x.employee_id)} ngày ${x.work_date}?\n\nThao tác này không thể hoàn tác.`)) return
+    setError(''); setMessage('')
+    try {
+      await request(`/api/attendance/${x.id}`, { method: 'DELETE' })
+      setMessage('Đã xóa bản ghi chấm công')
+      await load()
     } catch (e) { setError(e.message) }
   }
 
@@ -58,6 +69,6 @@ export default function Attendance({ user }) {
 
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
-    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên hoặc ghi chú..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={dateFilter} onChange={e => setDateFilter(e.target.value)}><option value="ALL">Tất cả ngày</option>{dates.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Ngày</th><th>Giờ vào</th><th>Giờ ra</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.work_date}</td><td>{x.check_in ? new Date(x.check_in).toLocaleTimeString('vi-VN') : '-'}</td><td>{x.check_out ? new Date(x.check_out).toLocaleTimeString('vi-VN') : '-'}</td><td><span className={x.status === 'ABSENT' ? 'badge badge-off' : x.status === 'LEAVE' ? 'badge badge-wait' : 'badge'}>{statusLabel[x.status] || x.status}</span></td><td>{x.note || '-'}</td></tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} bản ghi chấm công</div></div>
+    <div className="panel data-panel management-list-panel"><div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên hoặc ghi chú..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={dateFilter} onChange={e => setDateFilter(e.target.value)}><option value="ALL">Tất cả ngày</option>{dates.map(x => <option key={x} value={x}>{x}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Ngày</th><th>Giờ vào</th><th>Giờ ra</th><th>Trạng thái</th><th>Ghi chú</th>{canDelete && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{x.work_date}</td><td>{x.check_in ? new Date(x.check_in).toLocaleTimeString('vi-VN') : '-'}</td><td>{x.check_out ? new Date(x.check_out).toLocaleTimeString('vi-VN') : '-'}</td><td><span className={x.status === 'ABSENT' ? 'badge badge-off' : x.status === 'LEAVE' ? 'badge badge-wait' : 'badge'}>{statusLabel[x.status] || x.status}</span></td><td>{x.note || '-'}</td>{canDelete && <td><button className="danger" onClick={() => removeAttendance(x)}><Trash2 size={14}/> Xóa</button></td>}</tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} bản ghi chấm công</div></div>
   </section>
 }
