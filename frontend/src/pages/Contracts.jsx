@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileCheck2, FileClock, FileText, Plus, Search, XCircle } from 'lucide-react'
+import { FileCheck2, FileClock, FileText, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { request } from '../api'
 import { canManageEmployees } from '../roles'
 
@@ -10,6 +10,7 @@ const statusLabel = { ACTIVE: 'Đang hiệu lực', EXPIRED: 'Hết hạn', TERM
 export default function Contracts({ user }) {
   const role = user?.role
   const editable = canManageEmployees(role)
+  const canDelete = role === 'ADMIN'
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
   const [form, setForm] = useState(blank)
@@ -64,6 +65,16 @@ export default function Contracts({ user }) {
     } catch (e) { setError(e.message) }
   }
 
+  const removeContract = async (contract) => {
+    if (!confirm(`Xóa hợp đồng ${contract.contract_no}?\n\nThao tác này xóa vĩnh viễn hợp đồng và không thể hoàn tác.`)) return
+    setError(''); setMessage('')
+    try {
+      await request(`/api/talent/contracts/${contract.id}`, { method: 'DELETE' })
+      setMessage(`Đã xóa hợp đồng ${contract.contract_no}`)
+      await load()
+    } catch (e) { setError(e.message) }
+  }
+
   const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
   const filteredItems = useMemo(() => items.filter(x => {
     const keyword = query.trim().toLowerCase()
@@ -103,7 +114,7 @@ export default function Contracts({ user }) {
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="ALL">Tất cả loại hợp đồng</option>{Object.entries(typeLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
       </div>
-      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Số hợp đồng</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Mức lương</th><th>Trạng thái</th></tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td><span className="role-chip">{typeLabel[x.contract_type] || x.contract_type}</span></td><td>{x.start_date}<br/><small>đến {x.end_date || 'Không thời hạn'}</small></td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td>{editable ? <select value={x.status} onChange={e => changeStatus(x, e.target.value)} className="inline-status-select"><option value="ACTIVE">Đang hiệu lực</option><option value="EXPIRED">Hết hạn</option><option value="TERMINATED">Đã chấm dứt</option></select> : <span className={x.status === 'ACTIVE' ? 'badge' : x.status === 'EXPIRED' ? 'badge badge-wait' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span>}</td></tr>)}</tbody></table></div>
+      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Số hợp đồng</th><th>Nhân viên</th><th>Loại</th><th>Hiệu lực</th><th>Mức lương</th><th>Trạng thái</th>{canDelete && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{x.contract_no}</b></td><td>{empName(x.employee_id)}</td><td><span className="role-chip">{typeLabel[x.contract_type] || x.contract_type}</span></td><td>{x.start_date}<br/><small>đến {x.end_date || 'Không thời hạn'}</small></td><td>{Number(x.salary).toLocaleString('vi-VN')} đ</td><td>{editable ? <select value={x.status} onChange={e => changeStatus(x, e.target.value)} className="inline-status-select"><option value="ACTIVE">Đang hiệu lực</option><option value="EXPIRED">Hết hạn</option><option value="TERMINATED">Đã chấm dứt</option></select> : <span className={x.status === 'ACTIVE' ? 'badge' : x.status === 'EXPIRED' ? 'badge badge-wait' : 'badge badge-off'}>{statusLabel[x.status] || x.status}</span>}</td>{canDelete && <td><button className="danger" onClick={() => removeContract(x)}><Trash2 size={14}/> Xóa</button></td>}</tr>)}</tbody></table></div>
       <div className="table-footer">Hiển thị {filteredItems.length} / {items.length} hợp đồng</div>
     </div>
 
