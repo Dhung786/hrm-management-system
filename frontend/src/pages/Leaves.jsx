@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarCheck2, CalendarClock, CalendarDays, Plus, Search, XCircle } from 'lucide-react'
+import { CalendarCheck2, CalendarClock, CalendarDays, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { request } from '../api'
 import { canApproveLeave } from '../roles'
 
@@ -10,6 +10,7 @@ const statusLabel = { PENDING: 'Chờ duyệt', APPROVED: 'Đã duyệt', REJECT
 export default function Leaves({ user }) {
   const role = user?.role
   const canApprove = canApproveLeave(role)
+  const canDelete = role === 'ADMIN'
   const createForOthers = ['ADMIN', 'HR'].includes(role)
   const [items, setItems] = useState([])
   const [employees, setEmployees] = useState([])
@@ -49,6 +50,16 @@ export default function Leaves({ user }) {
     } catch (e) { setError(e.message) }
   }
 
+  const removeLeave = async (x) => {
+    if (!confirm(`Xóa đơn nghỉ của ${empName(x.employee_id)} từ ${x.start_date} đến ${x.end_date}?\n\nThao tác này không thể hoàn tác.`)) return
+    setError(''); setMessage('')
+    try {
+      await request(`/api/leaves/${x.id}`, { method: 'DELETE' })
+      setMessage('Đã xóa đơn nghỉ')
+      await load()
+    } catch (e) { setError(e.message) }
+  }
+
   const empName = id => employees.find(x => x.id === id)?.full_name || (user?.employee_id === id ? user.full_name : `#${id}`)
   const filteredItems = useMemo(() => items.filter(x => {
     const keyword = query.trim().toLowerCase()
@@ -77,7 +88,7 @@ export default function Leaves({ user }) {
 
     <div className="panel data-panel management-list-panel">
       <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm nhân viên hoặc lý do nghỉ..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="ALL">Tất cả loại nghỉ</option>{Object.entries(leaveLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option>{Object.entries(statusLabel).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Loại nghỉ</th><th>Thời gian</th><th>Lý do</th><th>Trạng thái</th>{canApprove && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{leaveLabel[x.leave_type] || x.leave_type}</td><td>{x.start_date}<br/><small>đến {x.end_date}</small></td><td>{x.reason || '-'}</td><td><span className={x.status === 'APPROVED' ? 'badge' : x.status === 'REJECTED' ? 'badge badge-off' : 'badge badge-wait'}>{statusLabel[x.status] || x.status}</span></td>{canApprove && <td>{x.status === 'PENDING' ? <div className="actions"><button onClick={() => decide(x.id, 'APPROVED')}>Duyệt</button><button className="danger" onClick={() => decide(x.id, 'REJECTED')}>Từ chối</button></div> : <small>Đã xử lý</small>}</td>}</tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} đơn nghỉ</div>
+      <div className="table-wrap"><table><thead><tr><th>STT</th><th>Nhân viên</th><th>Loại nghỉ</th><th>Thời gian</th><th>Lý do</th><th>Trạng thái</th>{(canApprove || canDelete) && <th>Thao tác</th>}</tr></thead><tbody>{filteredItems.map((x,index) => <tr key={x.id}><td>{index + 1}</td><td><b>{empName(x.employee_id)}</b></td><td>{leaveLabel[x.leave_type] || x.leave_type}</td><td>{x.start_date}<br/><small>đến {x.end_date}</small></td><td>{x.reason || '-'}</td><td><span className={x.status === 'APPROVED' ? 'badge' : x.status === 'REJECTED' ? 'badge badge-off' : 'badge badge-wait'}>{statusLabel[x.status] || x.status}</span></td>{(canApprove || canDelete) && <td><div className="actions">{canApprove && x.status === 'PENDING' && <><button onClick={() => decide(x.id, 'APPROVED')}>Duyệt</button><button className="danger" onClick={() => decide(x.id, 'REJECTED')}>Từ chối</button></>}{canApprove && !canDelete && x.status !== 'PENDING' && <small>Đã xử lý</small>}{canDelete && <button className="danger" onClick={() => removeLeave(x)}><Trash2 size={14}/> Xóa</button>}</div></td>}</tr>)}</tbody></table></div><div className="table-footer">Hiển thị {filteredItems.length} / {items.length} đơn nghỉ</div>
     </div>
 
     {showCreate && <div className="modal-backdrop"><form className="modal-card employee-compact-modal" onSubmit={create}>
