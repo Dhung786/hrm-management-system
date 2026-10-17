@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_current_user, manager_department_id, require_roles
-from app.models import Department, Employee, Position, UserAccount
+from app.models import Attendance, Contract, Department, Employee, LeaveRequest, Payroll, PerformanceReview, Position, UserAccount
 from app.schemas import DepartmentIn, DepartmentOut, EmployeeIn, EmployeeOut, PositionIn, PositionOut
 
 router = APIRouter(prefix="/api/hr", tags=["human-resources"])
@@ -88,10 +88,10 @@ def create_employee(payload: EmployeeIn, db: Session = Depends(get_db), _=Depend
     _validate_employee_refs(payload, db)
     duplicate = db.scalar(select(Employee).where((Employee.employee_code == payload.employee_code) | (Employee.email == str(payload.email))))
     if duplicate:
-        raise HTTPException(409, "Mã nhân viên hoặc email đã tồn tại")
+        raise HTTPException(409, "Mã nhân viên hoặc tên đăng nhập đã tồn tại")
     obj = Employee(**payload.model_dump())
     db.add(obj)
-    _commit_or_conflict(db, "Mã nhân viên hoặc email đã tồn tại")
+    _commit_or_conflict(db, "Mã nhân viên hoặc tên đăng nhập đã tồn tại")
     db.refresh(obj)
     return obj
 
@@ -109,7 +109,7 @@ def update_employee(employee_id: int, payload: EmployeeIn, db: Session = Depends
         )
     )
     if duplicate:
-        raise HTTPException(409, "Mã nhân viên hoặc email đã được dùng bởi nhân viên khác")
+        raise HTTPException(409, "Mã nhân viên hoặc tên đăng nhập đã được dùng bởi nhân viên khác")
     for key, value in payload.model_dump().items():
         setattr(obj, key, value)
     _commit_or_conflict(db, "Dữ liệu nhân viên bị trùng")
@@ -125,6 +125,41 @@ def deactivate_employee(employee_id: int, db: Session = Depends(get_db), _=Depen
     if obj.status == "INACTIVE":
         return None
     obj.status = "INACTIVE"
+    db.commit()
+    return None
+
+
+@router.delete("/employees/{employee_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def delete_employee_permanently(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current: UserAccount = Depends(require_roles("ADMIN")),
+):
+    obj = db.get(Employee, employee_id)
+    if not obj:
+        raise HTTPException(404, "Không tìm thấy nhân viên")
+    if current.employee_id == employee_id:
+        raise HTTPException(400, "Không thể xóa hồ sơ nhân viên đang gắn với tài khoản bạn đang đăng nhập")
+
+    history_checks = (
+        (Attendance, "chấm công"),
+        (LeaveRequest, "nghỉ phép"),
+        (Payroll, "tiền lương"),
+        (Contract, "hợp đồng"),
+        (PerformanceReview, "đánh giá hiệu suất"),
+    )
+    for model, label in history_checks:
+        if db.scalar(select(model.id).where(model.employee_id == employee_id).limit(1)):
+            raise HTTPException(409, f"Không thể xóa vĩnh viễn vì nhân viên đã có dữ liệu {label}. Hãy dùng trạng thái Nghỉ việc để giữ lịch sử.")
+
+    linked_account = db.scalar(select(UserAccount).where(UserAccount.employee_id == employee_id))
+    if linked_account:
+        if linked_account.role == "ADMIN":
+            raise HTTPException(409, "Không thể xóa hồ sơ đang gắn với tài khoản Quản trị hệ thống")
+        db.delete(linked_account)
+        db.flush()
+
+    db.delete(obj)
     db.commit()
     return None
 
