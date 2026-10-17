@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CircleAlert, Plus, Search, UserRoundCheck, UserRoundX, UsersRound } from 'lucide-react'
+import { CircleAlert, Plus, Search, Trash2, UserRoundCheck, UserRoundX, UsersRound } from 'lucide-react'
 import { request } from '../api'
 import { canManageEmployees } from '../roles'
 
 const blank = {
-  employee_code: '', full_name: '', email: '', phone: '', date_of_birth: '', gender: '', address: '',
+  employee_code: '', full_name: '', username: '', phone: '', date_of_birth: '', gender: '', address: '',
   hire_date: new Date().toISOString().slice(0, 10), base_salary: 0, status: 'ACTIVE', department_id: '', position_id: '',
+}
+
+function usernameFromStored(value) {
+  const login = String(value || '').trim()
+  if (!login) return ''
+  if (login.toLowerCase().endsWith('@hr.local')) return login.slice(0, -9)
+  return login.includes('@') ? login.split('@')[0] : login
+}
+
+function storedLoginFromUsername(value) {
+  const username = String(value || '').trim().toLowerCase()
+  return username ? `${username}@hr.local` : ''
 }
 
 function validate(form) {
   if (!form.employee_code.trim()) return 'Mã nhân viên là bắt buộc'
   if (!form.full_name.trim()) return 'Họ tên là bắt buộc'
   if (/\d/.test(form.full_name)) return 'Họ tên không được chứa chữ số'
-  if (!/^\S+@\S+\.\S+$/.test(form.email)) return 'Email không hợp lệ'
+  if (!/^[a-zA-Z0-9._-]{3,50}$/.test(form.username.trim())) return 'Tên đăng nhập phải có 3-50 ký tự, chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang'
   if (form.phone && !/^\d{9,10}$/.test(form.phone)) return 'Số điện thoại chỉ được gồm 9-10 chữ số và không được quá 10 số'
   if (Number(form.base_salary) < 0) return 'Lương cơ bản không được âm'
   if (form.date_of_birth && form.date_of_birth > new Date().toISOString().slice(0, 10)) return 'Ngày sinh không được ở tương lai'
@@ -22,6 +34,7 @@ function validate(form) {
 export default function Employees({ user }) {
   const role = user?.role
   const editable = canManageEmployees(role)
+  const canDeletePermanently = role === 'ADMIN'
   const [items, setItems] = useState([])
   const [departments, setDepartments] = useState([])
   const [positions, setPositions] = useState([])
@@ -52,9 +65,15 @@ export default function Employees({ user }) {
   const save = async (e) => {
     e.preventDefault(); setError(''); setMessage('')
     const localError = validate(form); if (localError) return setError(localError)
+    const { username, ...employeeForm } = form
     const payload = {
-      ...form, phone: form.phone || null, date_of_birth: form.date_of_birth || null, gender: form.gender || null,
-      address: form.address || null, base_salary: Number(form.base_salary),
+      ...employeeForm,
+      email: storedLoginFromUsername(username),
+      phone: form.phone || null,
+      date_of_birth: form.date_of_birth || null,
+      gender: form.gender || null,
+      address: form.address || null,
+      base_salary: Number(form.base_salary),
       department_id: form.department_id ? Number(form.department_id) : null,
       position_id: form.position_id ? Number(form.position_id) : null,
     }
@@ -67,7 +86,17 @@ export default function Employees({ user }) {
 
   const edit = (x) => {
     setEditingId(x.id); setError(''); setMessage('')
-    setForm({ ...blank, ...x, phone: x.phone || '', date_of_birth: x.date_of_birth || '', gender: x.gender || '', address: x.address || '', department_id: x.department_id || '', position_id: x.position_id || '' })
+    setForm({
+      ...blank,
+      ...x,
+      username: usernameFromStored(x.email),
+      phone: x.phone || '',
+      date_of_birth: x.date_of_birth || '',
+      gender: x.gender || '',
+      address: x.address || '',
+      department_id: x.department_id || '',
+      position_id: x.position_id || '',
+    })
     setShowForm(true)
   }
 
@@ -77,9 +106,21 @@ export default function Employees({ user }) {
     catch (e) { setError(e.message) }
   }
 
+  const removePermanently = async (x) => {
+    const ok = confirm(`Xóa vĩnh viễn nhân viên ${x.full_name} (${x.employee_code})?\n\nChỉ xóa được khi nhân viên chưa có dữ liệu lịch sử. Thao tác này không thể hoàn tác.`)
+    if (!ok) return
+    setError(''); setMessage('')
+    try {
+      await request(`/api/hr/employees/${x.id}/permanent`, { method: 'DELETE' })
+      setMessage(`Đã xóa nhân viên ${x.full_name}`)
+      await load()
+    } catch (e) { setError(e.message) }
+  }
+
   const filteredItems = useMemo(() => items.filter(x => {
     const keyword = query.trim().toLowerCase()
-    const matchesText = !keyword || `${x.employee_code} ${x.full_name} ${x.email} ${x.phone || ''} ${departmentMap[x.department_id] || ''} ${positionMap[x.position_id] || ''}`.toLowerCase().includes(keyword)
+    const username = usernameFromStored(x.email)
+    const matchesText = !keyword || `${x.employee_code} ${x.full_name} ${username} ${x.phone || ''} ${departmentMap[x.department_id] || ''} ${positionMap[x.position_id] || ''}`.toLowerCase().includes(keyword)
     const matchesDepartment = departmentFilter === 'ALL' || String(x.department_id || '') === departmentFilter
     const matchesStatus = statusFilter === 'ALL' || x.status === statusFilter
     return matchesText && matchesDepartment && matchesStatus
@@ -114,8 +155,8 @@ export default function Employees({ user }) {
     {error && <div className="error notice">{error}</div>}{message && <div className="success notice">{message}</div>}
 
     <div className="panel data-panel management-list-panel">
-      <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm theo họ tên, mã, email, SĐT..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="ALL">Tất cả phòng ban</option>{departments.map(x => <option key={x.id} value={String(x.id)}>{x.name}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang làm</option><option value="INACTIVE">Đã nghỉ việc</option></select></div>
-      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Mã NV</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{pageItems.map((x,index) => <tr key={x.id}><td>{pageStart + index + 1}</td><td><b>{x.employee_code}</b></td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{x.email}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : 'badge'}>{x.status === 'INACTIVE' ? 'Đã nghỉ việc' : 'Đang làm'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}</div></td>}</tr>)}</tbody></table></div>
+      <div className="filter-bar"><label className="search-box"><Search size={17}/><input placeholder="Tìm theo họ tên, mã, tên đăng nhập, SĐT..." value={query} onChange={e => setQuery(e.target.value)} /></label><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="ALL">Tất cả phòng ban</option>{departments.map(x => <option key={x.id} value={String(x.id)}>{x.name}</option>)}</select><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang làm</option><option value="INACTIVE">Đã nghỉ việc</option></select></div>
+      <div className="table-wrap"><table className="employee-table"><thead><tr><th>STT</th><th>Mã NV</th><th>Nhân viên</th><th>Số điện thoại</th><th>Phòng ban</th><th>Chức vụ</th>{role !== 'MANAGER' && <th>Lương cơ bản</th>}<th>Trạng thái</th>{editable && <th>Thao tác</th>}</tr></thead><tbody>{pageItems.map((x,index) => <tr key={x.id}><td>{pageStart + index + 1}</td><td><b>{x.employee_code}</b></td><td><div className="person-cell"><div className="person-avatar">{x.full_name?.charAt(0)?.toUpperCase()}</div><div><b>{x.full_name}</b><small>{usernameFromStored(x.email) || '-'}</small></div></div></td><td>{x.phone || '-'}</td><td>{departmentMap[x.department_id] || '-'}</td><td><span className="role-chip">{positionMap[x.position_id] || '-'}</span></td>{role !== 'MANAGER' && <td>{Number(x.base_salary).toLocaleString('vi-VN')} đ</td>}<td><span className={x.status === 'INACTIVE' ? 'badge badge-off' : 'badge'}>{x.status === 'INACTIVE' ? 'Đã nghỉ việc' : 'Đang làm'}</span></td>{editable && <td><div className="actions"><button onClick={() => edit(x)}>Sửa</button>{x.status !== 'INACTIVE' && <button className="danger" onClick={() => deactivate(x)}>Nghỉ việc</button>}{canDeletePermanently && <button className="danger" title="Xóa vĩnh viễn" onClick={() => removePermanently(x)}><Trash2 size={14}/> Xóa</button>}</div></td>}</tr>)}</tbody></table></div>
       <div className="table-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div className="actions" style={{ alignItems: 'center' }}><span>Số dòng:</span><select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ padding: '7px 10px' }}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option></select></div>
         <span>{filteredItems.length ? `Hiển thị ${pageStart + 1}-${Math.min(pageStart + pageSize, filteredItems.length)} / ${filteredItems.length} nhân viên` : 'Không có nhân viên phù hợp'}</span>
@@ -136,7 +177,7 @@ export default function Employees({ user }) {
           <label className="employee-form-cell"><span>Họ tên</span><input maxLength={160} value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} required /></label>
         </div>
         <div className="employee-form-row">
-          <label className="employee-form-cell"><span>Email</span><input type="email" maxLength={160} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required /></label>
+          <label className="employee-form-cell"><span>Tên đăng nhập</span><input type="text" maxLength={50} placeholder="vd: nguyen.van.a" value={form.username} onChange={e => setForm({ ...form, username: e.target.value.replace(/\s/g, '').toLowerCase() })} required /><small className="hint">Dùng khi tạo tài khoản cho nhân viên.</small></label>
           <label className="employee-form-cell"><span>Điện thoại</span><input inputMode="numeric" maxLength={10} placeholder="9-10 chữ số" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} /></label>
         </div>
         <div className="employee-form-row">
