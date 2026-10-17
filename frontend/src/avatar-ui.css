@@ -1,12 +1,12 @@
-/* Avatar presentation derived only from authenticated employee gender + account role. */
+/* Real-photo avatar presentation based on authenticated employee gender + account role. */
 .app-shell .role-avatar{
   --avatar-accent:#f04b57;
-  --avatar-accent-dark:#7c2730;
   width:42px;
   height:42px;
   flex:0 0 42px;
   position:relative;
   border-radius:50%;
+  overflow:visible;
   filter:drop-shadow(0 7px 16px rgba(0,0,0,.24));
 }
 
@@ -16,49 +16,45 @@
   flex-basis:38px;
 }
 
-.app-shell .role-avatar svg{
+.app-shell .role-avatar-photo,
+.app-shell .role-avatar-fallback{
   display:block;
   width:100%;
   height:100%;
   border-radius:50%;
-  overflow:hidden;
-  border:1px solid color-mix(in srgb,var(--avatar-accent) 48%,#5b626c);
-  background:
-    radial-gradient(circle at 50% 28%,rgba(255,255,255,.20),transparent 30%),
-    linear-gradient(145deg,#313842,#171c22);
+  border:2px solid color-mix(in srgb,var(--avatar-accent) 46%,#5b626c);
   box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.035),
-    0 0 0 2px rgba(255,255,255,.025);
+    0 0 0 2px rgba(255,255,255,.035),
+    0 7px 18px rgba(0,0,0,.30);
+  background:#20262d;
 }
 
-.app-shell .role-avatar .avatar-face{fill:#efc19d}
-.app-shell .role-avatar .avatar-hair,
-.app-shell .role-avatar .avatar-hair-front,
-.app-shell .role-avatar .avatar-neutral-hair{fill:#20242b}
-.app-shell .role-avatar .avatar-body{fill:var(--avatar-accent-dark)}
-.app-shell .role-avatar .avatar-shirt{fill:#e8edf3}
-.app-shell .role-avatar .avatar-tie{fill:var(--avatar-accent)}
+.app-shell .role-avatar-photo{
+  object-fit:cover;
+  object-position:center 28%;
+}
 
-.app-shell .role-avatar.gender-female .avatar-body{fill:var(--avatar-accent-dark)}
-.app-shell .role-avatar.gender-female .avatar-shirt{fill:#f3e9ec}
-.app-shell .role-avatar.gender-female .avatar-hair,
-.app-shell .role-avatar.gender-female .avatar-hair-front{fill:#252028}
-
-.app-shell .role-avatar.gender-other svg{filter:saturate(.72)}
-.app-shell .role-avatar.gender-other .avatar-face{fill:#d8c5b8}
-.app-shell .role-avatar.gender-other .avatar-body{fill:#48515e}
+.app-shell .role-avatar-fallback{
+  display:grid;
+  place-items:center;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.3px;
+  background:linear-gradient(135deg,#2f3741,#171c22);
+}
 
 .app-shell .role-avatar-badge{
   position:absolute;
-  right:-4px;
+  right:-5px;
   bottom:-3px;
-  min-width:18px;
-  height:18px;
+  min-width:19px;
+  height:19px;
   padding:0 4px;
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:9px;
+  border-radius:10px;
   border:2px solid #0d1116;
   background:var(--avatar-accent);
   color:#fff!important;
@@ -70,12 +66,12 @@
   box-shadow:0 3px 9px rgba(0,0,0,.32);
 }
 
-.app-shell .role-admin{--avatar-accent:#f04b57;--avatar-accent-dark:#772a33}
-.app-shell .role-hr{--avatar-accent:#d95b88;--avatar-accent-dark:#6e3049}
-.app-shell .role-manager{--avatar-accent:#5e8df5;--avatar-accent-dark:#304d82}
-.app-shell .role-payroll{--avatar-accent:#e5a52b;--avatar-accent-dark:#745620}
-.app-shell .role-employee{--avatar-accent:#24bd8a;--avatar-accent-dark:#24614f}
-.app-shell .role-default{--avatar-accent:#8792a2;--avatar-accent-dark:#48515e}
+.app-shell .role-admin{--avatar-accent:#f04b57}
+.app-shell .role-hr{--avatar-accent:#d95b88}
+.app-shell .role-manager{--avatar-accent:#5e8df5}
+.app-shell .role-payroll{--avatar-accent:#e5a52b}
+.app-shell .role-employee{--avatar-accent:#24bd8a}
+.app-shell .role-default{--avatar-accent:#8792a2}
 
 .app-shell .sidebar-user .role-avatar{margin-right:1px}
 .app-shell .topbar .role-avatar{z-index:2;margin-left:1px}
