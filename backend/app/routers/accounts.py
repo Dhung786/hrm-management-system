@@ -43,7 +43,7 @@ def create_account(
 ):
     email = str(payload.email).strip().lower()
     if db.scalar(select(UserAccount).where(UserAccount.email == email)):
-        raise HTTPException(409, "Email đăng nhập đã tồn tại")
+        raise HTTPException(409, "Tên đăng nhập đã tồn tại")
 
     employee = None
     if payload.employee_id:
