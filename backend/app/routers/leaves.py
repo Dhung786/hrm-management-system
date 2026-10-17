@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -77,3 +77,17 @@ def decide(
     db.commit()
     db.refresh(obj)
     return obj
+
+
+@router.delete("/{leave_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_leave(
+    leave_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_roles("ADMIN")),
+):
+    obj = db.get(LeaveRequest, leave_id)
+    if not obj:
+        raise HTTPException(404, "Không tìm thấy đơn nghỉ")
+    db.delete(obj)
+    db.commit()
+    return None
