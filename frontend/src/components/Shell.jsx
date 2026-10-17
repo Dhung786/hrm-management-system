@@ -34,11 +34,11 @@ const items = [
 const pageLabels = Object.fromEntries(items.map(([id, label]) => [id, label]))
 
 const avatarRoleMeta = {
-  ADMIN: { short: 'QT', className: 'role-admin' },
-  HR: { short: 'NS', className: 'role-hr' },
-  MANAGER: { short: 'TP', className: 'role-manager' },
-  PAYROLL: { short: 'KT', className: 'role-payroll' },
-  EMPLOYEE: { short: 'NV', className: 'role-employee' },
+  ADMIN: { className: 'role-admin' },
+  HR: { className: 'role-hr' },
+  MANAGER: { className: 'role-manager' },
+  PAYROLL: { className: 'role-payroll' },
+  EMPLOYEE: { className: 'role-employee' },
 }
 
 // Ảnh chân dung thật dùng cố định theo giới tính + vai trò để giao diện luôn nhất quán.
@@ -81,7 +81,7 @@ function genderLabel(value) {
 
 function RoleAvatar({ user, small = false }) {
   const gender = normalizedGender(user.gender)
-  const roleMeta = avatarRoleMeta[user.role] || { short: 'HR', className: 'role-default' }
+  const roleMeta = avatarRoleMeta[user.role] || { className: 'role-default' }
   const title = `${user.full_name || user.email} · ${user.role_label} · ${genderLabel(user.gender)}`
   const portrait = avatarPortraits[user.role]?.[gender]
   const initials = (user.full_name || user.email || 'HR')
@@ -103,7 +103,6 @@ function RoleAvatar({ user, small = false }) {
       ) : (
         <span className="role-avatar-fallback" aria-hidden="true">{initials || 'HR'}</span>
       )}
-      <span className="role-avatar-badge">{roleMeta.short}</span>
     </div>
   )
 }
@@ -155,7 +154,13 @@ export default function Shell({ page, setPage, children, onLogout, user, allowed
         <div className="topbar-spacer" />
         <div className="api-status"><span className="api-dot"/>API Online</div>
         <button className="icon-button" type="button" title="Thông báo"><Bell size={18}/></button>
-        <RoleAvatar user={user} />
+        <div className="topbar-user" title={`${user.full_name || user.email} · ${user.role_label}`}>
+          <RoleAvatar user={user} />
+          <div className="topbar-user-text">
+            <b>{user.full_name || user.email}</b>
+            <span>{user.role_label}</span>
+          </div>
+        </div>
       </header>
       {children}
     </main>
