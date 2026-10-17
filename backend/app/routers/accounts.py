@@ -97,3 +97,30 @@ def update_account(
     db.commit()
     db.refresh(user)
     return _to_out(user)
+
+
+@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    current: UserAccount = Depends(require_roles("ADMIN")),
+):
+    user = db.get(UserAccount, account_id)
+    if not user:
+        raise HTTPException(404, "Không tìm thấy tài khoản")
+    if user.id == current.id:
+        raise HTTPException(400, "Không thể xóa tài khoản đang đăng nhập")
+
+    if user.role == "ADMIN":
+        active_admins = db.scalar(
+            select(func.count(UserAccount.id)).where(
+                UserAccount.role == "ADMIN",
+                UserAccount.is_active.is_(True),
+            )
+        ) or 0
+        if user.is_active and active_admins <= 1:
+            raise HTTPException(400, "Hệ thống phải còn ít nhất một tài khoản Quản trị hệ thống hoạt động")
+
+    db.delete(user)
+    db.commit()
+    return None
