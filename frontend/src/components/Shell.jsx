@@ -41,6 +41,31 @@ const avatarRoleMeta = {
   EMPLOYEE: { short: 'NV', className: 'role-employee' },
 }
 
+// Ảnh chân dung thật dùng cố định theo giới tính + vai trò để giao diện luôn nhất quán.
+// Khi hệ thống có upload ảnh hồ sơ, chỉ cần ưu tiên user.avatar_url trước các URL này.
+const avatarPortraits = {
+  ADMIN: {
+    MALE: 'https://randomuser.me/api/portraits/men/32.jpg',
+    FEMALE: 'https://randomuser.me/api/portraits/women/44.jpg',
+  },
+  HR: {
+    MALE: 'https://randomuser.me/api/portraits/men/46.jpg',
+    FEMALE: 'https://randomuser.me/api/portraits/women/47.jpg',
+  },
+  MANAGER: {
+    MALE: 'https://randomuser.me/api/portraits/men/11.jpg',
+    FEMALE: 'https://randomuser.me/api/portraits/women/45.jpg',
+  },
+  PAYROLL: {
+    MALE: 'https://randomuser.me/api/portraits/men/52.jpg',
+    FEMALE: 'https://randomuser.me/api/portraits/women/36.jpg',
+  },
+  EMPLOYEE: {
+    MALE: 'https://randomuser.me/api/portraits/men/75.jpg',
+    FEMALE: 'https://randomuser.me/api/portraits/women/65.jpg',
+  },
+}
+
 function normalizedGender(value) {
   const gender = String(value || '').trim().toUpperCase()
   if (gender === 'MALE' || gender === 'FEMALE') return gender
@@ -58,6 +83,14 @@ function RoleAvatar({ user, small = false }) {
   const gender = normalizedGender(user.gender)
   const roleMeta = avatarRoleMeta[user.role] || { short: 'HR', className: 'role-default' }
   const title = `${user.full_name || user.email} · ${user.role_label} · ${genderLabel(user.gender)}`
+  const portrait = avatarPortraits[user.role]?.[gender]
+  const initials = (user.full_name || user.email || 'HR')
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map(part => part.charAt(0))
+    .join('')
+    .toUpperCase()
 
   return (
     <div
@@ -65,32 +98,11 @@ function RoleAvatar({ user, small = false }) {
       title={title}
       aria-label={title}
     >
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        {gender === 'FEMALE' ? (
-          <>
-            <path className="avatar-hair" d="M14 31c0-13 7-22 18-22s18 9 18 22v14H14V31Z"/>
-            <circle className="avatar-face" cx="32" cy="27" r="11"/>
-            <path className="avatar-hair-front" d="M20 25c1-8 5-12 12-12 6 0 10 3 13 9-6-4-15-3-25 3Z"/>
-            <path className="avatar-body" d="M12 61c2-13 9-19 20-19s18 6 20 19H12Z"/>
-            <path className="avatar-shirt" d="M25 44l7 7 7-7 4 17H21l4-17Z"/>
-          </>
-        ) : gender === 'MALE' ? (
-          <>
-            <circle className="avatar-face" cx="32" cy="27" r="11"/>
-            <path className="avatar-hair" d="M21 22c1-8 5-12 12-12 7 0 11 4 12 12-6-4-16-4-24 0Z"/>
-            <path className="avatar-body" d="M12 61c2-13 9-19 20-19s18 6 20 19H12Z"/>
-            <path className="avatar-shirt" d="M24 44l8 8 8-8 5 17H19l5-17Z"/>
-            <path className="avatar-tie" d="M30 49h4l2 12h-8l2-12Z"/>
-          </>
-        ) : (
-          <>
-            <circle className="avatar-face" cx="32" cy="25" r="11"/>
-            <path className="avatar-neutral-hair" d="M20 22c2-8 6-12 12-12s10 4 12 12c-7-3-17-3-24 0Z"/>
-            <path className="avatar-body" d="M12 61c2-13 9-19 20-19s18 6 20 19H12Z"/>
-            <path className="avatar-shirt" d="M24 44l8 7 8-7 4 17H20l4-17Z"/>
-          </>
-        )}
-      </svg>
+      {portrait ? (
+        <img className="role-avatar-photo" src={portrait} alt="" aria-hidden="true" />
+      ) : (
+        <span className="role-avatar-fallback" aria-hidden="true">{initials || 'HR'}</span>
+      )}
       <span className="role-avatar-badge">{roleMeta.short}</span>
     </div>
   )
