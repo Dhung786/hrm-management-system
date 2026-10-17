@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  ArrowRight,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -62,6 +63,11 @@ const ROLE_ACTIONS = {
   ],
 }
 
+const numberOf = value => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
 export default function Dashboard({ user, onNavigate }) {
   const [d, setD] = useState({})
   const [accounts, setAccounts] = useState([])
@@ -77,79 +83,143 @@ export default function Dashboard({ user, onNavigate }) {
       const locked = accounts.filter(x => !x.is_active).length
       const activeAccounts = accounts.filter(x => x.is_active).length
       return [
-        ['Nhân viên đang làm', d.active_employees || 0, 'Hồ sơ nhân sự đang hoạt động'],
-        ['Phòng ban', d.departments || 0, 'Cơ cấu tổ chức hiện tại'],
-        ['Tài khoản bị khóa', locked, locked ? 'Cần kiểm tra nếu khóa ngoài dự kiến' : 'Không có tài khoản cần chú ý'],
-        ['Tài khoản hoạt động', activeAccounts, 'Được phép đăng nhập hệ thống'],
+        { label: 'Nhân viên đang làm', value: d.active_employees || 0, note: 'Hồ sơ nhân sự đang hoạt động', Icon: Users, tone: 'red' },
+        { label: 'Phòng ban', value: d.departments || 0, note: 'Cơ cấu tổ chức hiện tại', Icon: Building2, tone: 'orange' },
+        { label: 'Tài khoản bị khóa', value: locked, note: locked ? 'Cần kiểm tra nếu khóa ngoài dự kiến' : 'Không có tài khoản cần chú ý', Icon: ShieldCheck, tone: 'yellow' },
+        { label: 'Tài khoản hoạt động', value: activeAccounts, note: 'Được phép đăng nhập hệ thống', Icon: UserRound, tone: 'blue' },
       ]
     }
 
     if (user?.role === 'HR') {
       return [
-        ['Nhân viên đang làm', d.active_employees || 0, 'Nhân sự đang hoạt động'],
-        ['Phòng ban', d.departments || 0, 'Đơn vị đang quản lý'],
-        ['Đơn nghỉ chờ duyệt', d.pending_leave || 0, 'Cần Nhân sự kiểm tra và xử lý'],
-        ['Có mặt hôm nay', d.present_today || 0, 'Đã ghi nhận chấm công'],
+        { label: 'Nhân viên đang làm', value: d.active_employees || 0, note: 'Nhân sự đang hoạt động', Icon: Users, tone: 'red' },
+        { label: 'Phòng ban', value: d.departments || 0, note: 'Đơn vị đang quản lý', Icon: Building2, tone: 'orange' },
+        { label: 'Đơn nghỉ chờ duyệt', value: d.pending_leave || 0, note: 'Cần Nhân sự kiểm tra và xử lý', Icon: CalendarDays, tone: 'yellow' },
+        { label: 'Có mặt hôm nay', value: d.present_today || 0, note: 'Đã ghi nhận chấm công', Icon: Clock3, tone: 'blue' },
       ]
     }
 
     if (user?.role === 'MANAGER') {
       return [
-        ['Nhân viên phòng tôi', d.active_employees || 0, 'Trong phòng ban phụ trách'],
-        ['Có mặt hôm nay', d.present_today || 0, 'Nhân viên trong phòng đã check-in'],
-        ['Đơn nghỉ chờ duyệt', d.pending_leave || 0, 'Cần Trưởng phòng xử lý'],
-        ['Phạm vi', user?.department_name || 'Phòng của tôi', 'Chỉ dữ liệu thuộc phòng phụ trách'],
+        { label: 'Nhân viên phòng tôi', value: d.active_employees || 0, note: 'Trong phòng ban phụ trách', Icon: Users, tone: 'red' },
+        { label: 'Có mặt hôm nay', value: d.present_today || 0, note: 'Nhân viên trong phòng đã check-in', Icon: Clock3, tone: 'orange' },
+        { label: 'Đơn nghỉ chờ duyệt', value: d.pending_leave || 0, note: 'Cần Trưởng phòng xử lý', Icon: CalendarDays, tone: 'yellow' },
+        { label: 'Phạm vi', value: user?.department_name || 'Phòng của tôi', note: 'Chỉ dữ liệu thuộc phòng phụ trách', Icon: Building2, tone: 'blue' },
       ]
     }
 
     if (user?.role === 'PAYROLL') {
-      const missingAttendance = Math.max(0, Number(d.active_employees || 0) - Number(d.present_today || 0))
+      const missingAttendance = Math.max(0, numberOf(d.active_employees) - numberOf(d.present_today))
       return [
-        ['Nhân viên đang làm', d.active_employees || 0, 'Phạm vi phục vụ tính lương'],
-        ['Đã chấm công hôm nay', d.present_today || 0, 'Dữ liệu đã ghi nhận'],
-        ['Chưa ghi nhận hôm nay', missingAttendance, 'Cần đối soát trước khi tính lương'],
-        ['Vai trò', user.role_label || 'Kế toán tiền lương', 'Quyền truy cập hiện tại'],
+        { label: 'Nhân viên đang làm', value: d.active_employees || 0, note: 'Phạm vi phục vụ tính lương', Icon: Users, tone: 'red' },
+        { label: 'Đã chấm công hôm nay', value: d.present_today || 0, note: 'Dữ liệu đã ghi nhận', Icon: Clock3, tone: 'orange' },
+        { label: 'Chưa ghi nhận hôm nay', value: missingAttendance, note: 'Cần đối soát trước khi tính lương', Icon: CalendarDays, tone: 'yellow' },
+        { label: 'Vai trò', value: user.role_label || 'Kế toán tiền lương', note: 'Quyền truy cập hiện tại', Icon: WalletCards, tone: 'blue' },
       ]
     }
 
     return [
-      ['Phạm vi dữ liệu', 'Cá nhân', 'Chỉ dữ liệu của bạn'],
-      ['Chấm công hôm nay', d.present_today ? 'Đã ghi nhận' : 'Chưa ghi nhận', 'Trạng thái hiện tại'],
-      ['Đơn nghỉ đang chờ', d.pending_leave || 0, 'Đơn chưa được xử lý'],
-      ['Vai trò', user?.role_label || 'Nhân viên', 'Quyền truy cập hiện tại'],
+      { label: 'Phạm vi dữ liệu', value: 'Cá nhân', note: 'Chỉ dữ liệu của bạn', Icon: UserRound, tone: 'red' },
+      { label: 'Chấm công hôm nay', value: d.present_today ? 'Đã ghi nhận' : 'Chưa ghi nhận', note: 'Trạng thái hiện tại', Icon: Clock3, tone: 'orange' },
+      { label: 'Đơn nghỉ đang chờ', value: d.pending_leave || 0, note: 'Đơn chưa được xử lý', Icon: CalendarDays, tone: 'yellow' },
+      { label: 'Vai trò', value: user?.role_label || 'Nhân viên', note: 'Quyền truy cập hiện tại', Icon: ShieldCheck, tone: 'blue' },
     ]
   }, [d, user, accounts])
 
   const actions = ROLE_ACTIONS[user?.role] || []
+  const quickActions = actions.slice(0, 4)
+  const numericCards = cards.filter(card => Number.isFinite(Number(card.value)))
+  const maxCardValue = Math.max(1, ...numericCards.map(card => numberOf(card.value)))
 
-  return <section className="workspace-section">
-    <div className="workspace-heading">
+  const activeEmployees = numberOf(d.active_employees)
+  const presentToday = Math.min(activeEmployees, numberOf(d.present_today))
+  const notRecorded = Math.max(0, activeEmployees - presentToday)
+  const presentPercent = activeEmployees > 0 ? Math.round((presentToday / activeEmployees) * 100) : 0
+
+  const today = new Intl.DateTimeFormat('vi-VN', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date())
+
+  return <section className="workspace-section overview-page">
+    <div className="overview-heading">
       <div>
-        <span className="eyebrow">TỔNG QUAN</span>
-        <h1>{user?.role_label || 'Người dùng'}</h1>
-        <p>Chào {user?.full_name || user?.email}. Các chỉ số và chức năng bên dưới được hiển thị đúng theo công việc của vai trò hiện tại.</p>
+        <h1>Tổng quan</h1>
+        <p>Tổng quan tình hình nhân sự và hoạt động hệ thống</p>
       </div>
-      <div className="workspace-badge"><span className="status-dot"/> {user?.role_label}</div>
+      <div className="overview-date-card">
+        <CalendarDays size={18}/>
+        <div><b>{today}</b><span>{user?.role_label || 'Người dùng hệ thống'}</span></div>
+      </div>
     </div>
 
-    <div className="dashboard-stats">
-      {cards.map(([label, value, note], index) => <div className="dashboard-stat" key={label}>
-        <div className={`stat-icon stat-icon-${index + 1}`}>{index + 1}</div>
-        <div><span>{label}</span><strong>{value}</strong><small>{note}</small></div>
+    <div className="overview-stat-grid">
+      {cards.map(({ label, value, note, Icon, tone }) => <div className={`overview-stat-card tone-${tone}`} key={label}>
+        <div className="overview-stat-icon"><Icon size={22}/></div>
+        <div className="overview-stat-copy"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>
+        <Icon className="overview-stat-watermark" size={50}/>
       </div>)}
     </div>
 
-    <div className="workspace-panel">
-      <div className="workspace-panel-heading">
-        <div><span className="eyebrow">CHỨC NĂNG</span><h2>Công việc của bạn</h2></div>
-        <small>Tên chức năng được dùng thống nhất trong toàn hệ thống; quyền truy cập vẫn phụ thuộc vai trò</small>
+    <div className="overview-main-grid">
+      <div className="overview-panel overview-chart-panel">
+        <div className="overview-panel-head">
+          <div><h2>Tổng hợp chỉ số</h2><span>Dữ liệu hiện có của vai trò {user?.role_label}</span></div>
+        </div>
+        <div className="overview-bar-chart">
+          {numericCards.map((card, index) => {
+            const height = Math.max(12, Math.round((numberOf(card.value) / maxCardValue) * 100))
+            return <div className="overview-bar-item" key={card.label}>
+              <div className="overview-bar-value">{card.value}</div>
+              <div className="overview-bar-track"><div className={`overview-bar-fill bar-${index + 1}`} style={{ height: `${height}%` }}/></div>
+              <div className="overview-bar-label">{card.label}</div>
+            </div>
+          })}
+        </div>
       </div>
-      <div className="workspace-actions">
-        {actions.map(([target, title, note, Icon]) => <button type="button" className="workspace-action" key={target} onClick={() => onNavigate?.(target)}>
-          <span className="workspace-action-icon"><Icon size={21}/></span>
-          <span><b>{title}</b><small>{note}</small></span>
-          <span className="workspace-action-arrow">→</span>
-        </button>)}
+
+      <div className="overview-panel overview-quick-panel">
+        <div className="overview-panel-head"><h2>Thao tác nhanh</h2></div>
+        <div className="overview-quick-grid">
+          {quickActions.map(([target, title, note, Icon], index) => <button type="button" className={`overview-quick-action quick-${index + 1}`} key={target} onClick={() => onNavigate?.(target)}>
+            <span className="overview-quick-icon"><Icon size={21}/></span>
+            <span><b>{title}</b><small>{note}</small></span>
+            <ArrowRight size={17}/>
+          </button>)}
+        </div>
+      </div>
+    </div>
+
+    <div className="overview-bottom-grid">
+      <div className="overview-panel overview-access-panel">
+        <div className="overview-panel-head">
+          <div><h2>Chức năng được phân quyền</h2><span>Các mục bạn có thể truy cập trong hệ thống</span></div>
+        </div>
+        <div className="overview-access-list">
+          {actions.slice(0, 6).map(([target, title, note, Icon]) => <button type="button" className="overview-access-row" key={target} onClick={() => onNavigate?.(target)}>
+            <span className="overview-access-icon"><Icon size={17}/></span>
+            <span className="overview-access-title">{title}</span>
+            <span className="overview-access-note">{note}</span>
+            <ArrowRight size={16}/>
+          </button>)}
+        </div>
+      </div>
+
+      <div className="overview-panel overview-attendance-panel">
+        <div className="overview-panel-head">
+          <div><h2>Tình hình chấm công</h2><span>Dữ liệu hôm nay</span></div>
+        </div>
+        <div className="overview-donut-wrap">
+          <div className="overview-donut" style={{ '--present': `${presentPercent}%` }}>
+            <div className="overview-donut-center"><strong>{activeEmployees}</strong><span>nhân viên</span></div>
+          </div>
+          <div className="overview-donut-legend">
+            <div><i className="legend-present"/><span>Đã ghi nhận</span><b>{presentToday}</b></div>
+            <div><i className="legend-missing"/><span>Chưa ghi nhận</span><b>{notRecorded}</b></div>
+          </div>
+        </div>
+        <div className="overview-attendance-summary">
+          <Clock3 size={19}/><div><b>{presentPercent}% đã ghi nhận chấm công</b><span>Dựa trên số nhân viên đang làm việc</span></div>
+        </div>
       </div>
     </div>
   </section>
